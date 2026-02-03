@@ -119,7 +119,7 @@ $(TMPDIR):
 #	#$(CC) -c src/assets.c $(CFLAGS) -o $@
 
 $(TMPDIR)/sniperengine.o: src/sniperengine/sniperengine.s
-	$(CC) -c src/sniperengine/sniperengine.s -o $@
+	$(CA65) src/sniperengine/sniperengine.s -o $@
 
 $(OUTDIR)/$(NAME).nes: $(OUTDIR) $(TMPDIR)/sniperengine.o #$(TMPDIR)/music.o $(TMPDIR)/assets.o $(TMPDIR)/donut.o src/*.h src/*.c src/*.s src/gamestates/*.c src/defines/*.h music/EXPORTS/lvlset_$(LEVELSET)/*.h $(CFG)
 	$(CC) src/main.c $(TMPDIR)/*.o $(CFLAGS) $(LDFLAGS) -o $@
