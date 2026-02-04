@@ -1,36 +1,40 @@
+.importzp __bank_select_hi,__in_progress,__prg_8000,__prg_a000
+__prg_c000 = __prg_8000
+
 .segment "ZEROPAGE"
-__bank_select_hi: 	.res 1
-__in_progress:		.res 1
-__prg_c000:			.res 1
-__prg_a000:			.res 1
+
 
 se_palette_buffer:  .res 32
 se_palette_pointer_bg:  .res 2
 se_palette_pointer_spr: .res 2
 
+;se_rle_pointer:     .res 2
 
 .segment "BSS"
 se_frame_count:     .res 1
 
 se_ppu_mask_var:    .res 1
 se_ppu_ctrl_var:    .res 1
+.export se_ppu_ctrl_var, se_ppu_mask_var
 
 se_scroll_x:        .res 2
 se_scroll_y:        .res 2
 
 se_vram_update:     .res 1
 se_palette_update:  .res 1
+.export se_palette_update
 
 se_sprite_id:       .res 1
 
-
+se_rle_tag:         .res 1
+se_rle_byte:        .res 1
 
 .segment "CODE"
 ;;
 ;; SNIPERENGINE API
 ;; USEFUL FOR ROM HACKING
 ;; TABLE STARTS AT $E100
-.align 128
+;.align 128
 ;;
 
 ;; mmc3 functions
@@ -40,12 +44,12 @@ jmp banked_call_a000
 jmp set_chr_bank
 
 ;; chr functions
-.align 32
-jmp se_donut_decompress_vram
+;.align 32
+jmp se_vram_donut_decompress
 
 
 ;; ppu functions
-.align 32
+;.align 32
 jmp se_wait_vsync
 
 
@@ -77,6 +81,8 @@ __rc16 = $10
 __rc17 = $11
 __rc18 = $12
 __rc19 = $13
+__rc20 = $14
+__rc21 = $15
 
 .export set_prg_c000
 .proc set_prg_c000
@@ -489,13 +495,71 @@ shorthand_plane_def_table:
 .endproc
 
 
-;;  ADDITIONS BY UserSniper:
-;;  I needed a quick way to call this from C;
-;;  this sniperengine function does exactly that
 
-.export se_donut_decompress_vram
-.proc se_donut_decompress_vram
-se_donut_decompress_vram:
+;; END OF DONUT CODE
+
+
+;; see the header
+;.export se_vram_address
+;.proc se_vram_address
+;    stx $2006
+;    sta $2006
+;    rts
+;.endproc
+
+.export se_vram_unrle
+.proc se_vram_unrle
+se_vram_unrle:
+
+    se_rle_pointer = __rc2
+
+    ldy se_rle_pointer+0
+    lda #0
+    sta se_rle_pointer+0
+
+    lda (se_rle_pointer),y
+    sta se_rle_tag
+    iny
+    bne @1
+    inc se_rle_pointer+1
+
+    @1:
+        lda (se_rle_pointer+0),y
+        iny
+        bne @11
+        inc se_rle_pointer+1
+
+    @11:
+        cmp se_rle_tag
+        beq @2
+        sta $2007
+        sta se_rle_byte
+        bne @1
+
+    @2:
+        lda (se_rle_pointer+0),y
+        beq @4
+        iny
+        bne @21
+        inc se_rle_pointer+1
+
+    @21:
+        tax
+        lda se_rle_byte
+
+    @3:
+        sta $2007
+        dex
+        bne @3
+        beq @1
+
+    @4:
+    rts
+.endproc
+
+.export se_vram_donut_decompress
+.proc se_vram_donut_decompress
+se_vram_donut_decompress:
     ;     A = bank number
     ; __rc2 = ptr (lo)
     ; __rc3 = ptr (hi)
@@ -604,8 +668,7 @@ se_donut_decompress_vram:
         sta se_palette_buffer, x
         dex
         bne @loop
-    inx
-    stx se_palette_update
+    inc se_palette_update
     rts
 .endproc
 
@@ -622,16 +685,142 @@ se_donut_decompress_vram:
 .endproc
 
 
+.export se_set_palette_brightness_background
+.proc se_set_palette_brightness_background
+    asl
+    asl
+    asl
+    asl
+    sta     __rc2
+    lda     #<se_palette_brightness_table
+    clc
+    adc     __rc2
+    tax
+    lda     #>se_palette_brightness_table
+    adc     #0
+    stx     se_palette_pointer_bg+0
+    sta     se_palette_pointer_bg+1
+    inc     se_palette_update
+    rts
+.endproc
+
+
+.export se_set_palette_brightness_sprites
+.proc se_set_palette_brightness_sprites
+    asl
+    asl
+    asl
+    asl
+    sta     __rc2
+    lda     #<se_palette_brightness_table
+    clc
+    adc     __rc2
+    tax
+    lda     #>se_palette_brightness_table
+    adc     #0
+    stx     se_palette_pointer_spr+0
+    sta     se_palette_pointer_spr+1
+    inc     se_palette_update
+    rts
+.endproc
+
+
+.export se_set_palette_brightness
+.proc se_set_palette_brightness
+    pha
+    jsr se_set_palette_brightness_background
+    pla
+    jmp se_set_palette_brightness_sprites
+.endproc
+
+
+.export se_fade_palette_to
+.proc se_fade_palette_to
+    tay
+	lda __rc20
+	pha
+	lda __rc21
+	pha
+	stx __rc20 ;to
+	sty __rc21 ;from
+	jmp @check_equal
+
+    @fade_loop:
+        ldx #4
+        :
+        jsr se_wait_vsync ;wait 4 frames
+        dex
+        bne :-
+
+        lda __rc21 ;from
+        cmp __rc20 ;to
+        bcs @more
+
+    @less:
+        clc
+        adc #1
+        sta __rc21 ;from
+        jsr se_set_palette_brightness
+        jmp @check_equal
+
+    @more:
+        sec
+        sbc #1
+        sta __rc21 ;from
+        jsr se_set_palette_brightness
+
+    @check_equal:
+        lda __rc21
+        cmp __rc20
+        bne @fade_loop
+
+    @done:
+	jsr se_wait_vsync ;do 1 final, make sure the last change goes
+	pla
+	sta __rc21
+	pla
+	sta __rc20
+	rts
+.endproc
+
+
+;.export
+;.proc
+;
+;.endproc
+
+
+;.export
+;.proc
+;
+;.endproc
+
+
+;.export
+;.proc
+;
+;.endproc
 
 
 
 
 
-
-
-
-
-
+.export se_clear_sprites
+.proc se_clear_sprites
+    .import OAM_BUF
+    lda #$ff
+    ldx se_sprite_id
+    beq @exit
+    @loop:
+        sta OAM_BUF,x
+        dex
+        dex
+        dex
+        dex
+        bne @loop
+    @exit:
+    rts
+.endproc 
 
 
 .export nmi
@@ -642,31 +831,54 @@ se_donut_decompress_vram:
     tya
     pha
 
-    ldy se_vram_update
-    bne :+
+    lda se_ppu_mask_var
+    and #%00011000
+    cmp #%00011000
+    beq :+
     jmp @exit
 
     :
-    ldy $2002
-    lda #$3f
-    ldx #$00
+        ldy se_palette_update
+        bne :+
+        jmp @exit
 
-    sta $2006
-    sta $2006
+        :
+            ldy #0
+            sty $2001
+            sty se_palette_update
 
-    .repeat 16,i
-    ldy se_palette_buffer+i
-    lda (se_palette_pointer_bg), y
-    sta $2007
-    .endrepeat
+            ldy $2002
+            lda #$3f
+            ldx #$00
 
-    .repeat 16,i
-    ldy se_palette_buffer+i+16
-    lda (se_palette_pointer_spr), y
-    sta $2007
-    .endrepeat
+            sta $2006
+            stx $2006
+
+            .repeat 16,i
+            ldy se_palette_buffer+i
+            lda (se_palette_pointer_bg), y
+            sta $2007
+            .endrepeat
+
+            ;.repeat 16,i
+            ;ldy se_palette_buffer+i+16
+            ;lda (se_palette_pointer_spr), y
+            ;sta $2007
+            ;.endrepeat
 
     @exit:
+    lda se_scroll_x
+    ldx se_scroll_y
+    sta $2005
+    stx $2005
+
+    lda se_ppu_ctrl_var
+    sta $2000
+    lda se_ppu_mask_var
+    sta $2001
+
+    inc se_frame_count
+
     pla
     tay
     pla

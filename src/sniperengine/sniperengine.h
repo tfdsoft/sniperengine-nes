@@ -18,13 +18,20 @@ __attribute__((section(".aligned"),retain)) struct OAM_BUF {
 } OAM_BUF[64];
 
 
+extern u8 se_ppu_ctrl_var, se_ppu_mask_var;
+extern u8 se_palette_update;
+
 
 __attribute__((leaf)) void banked_call_a000(u8 bank, void(*method)(void));
 __attribute__((leaf)) void set_prg_c000(u8 bank);
 __attribute__((leaf)) void set_prg_a000(u8 bank);
 __attribute__((leaf)) void set_chr_bank(u8 window, u8 bank);
 
-__attribute__((leaf)) void se_donut_decompress_vram(const u8 * data, u8 bank);
+#define se_vram_address(address) __asm__("ldx #>"STR(address)"\n stx $2006 \n ldx #<"STR(address)"\n stx $2006")
+__attribute__((leaf)) void se_vram_unrle(const void* data);
+__attribute__((leaf)) void se_vram_donut_decompress(const u8 * data, u8 bank);
+
+
 
 __attribute__((leaf)) void se_wait_vsync();
 __attribute__((leaf)) void se_turn_off_rendering();
@@ -35,3 +42,9 @@ __attribute__((leaf)) void se_set_palette_sprites(const u8* data);
 __attribute__((leaf)) void se_set_palette_all(const u8* data);
 __attribute__((leaf)) void se_clear_palette();
 __attribute__((leaf)) void se_set_palette_color(u8 index, u8 color);
+__attribute__((leaf)) void se_set_palette_brightness_background(u8 bright);
+__attribute__((leaf)) void se_set_palette_brightness_sprites(u8 bright);
+__attribute__((leaf)) void se_set_palette_brightness(u8 bright);
+__attribute__((leaf)) void se_fade_palette_to(u8 from, u8 to);
+
+__attribute__((leaf)) void se_clear_sprites();
