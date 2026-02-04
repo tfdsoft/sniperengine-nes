@@ -876,6 +876,8 @@ se_vram_donut_decompress:
     sta $2000
     lda se_ppu_mask_var
     sta $2001
+    lda #2
+    sta $4014
 
     inc se_frame_count
 
