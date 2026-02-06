@@ -2,6 +2,9 @@
 banked(61.data) __attribute__((retain)) const u8 chr_startup[] = {
     #embed "./chr/Menu_TFDLogo.bin"
 };
+banked(61.data) __attribute__((retain)) const u8 chr_font_pusab[] = {
+    #embed "./chr/Menu_Font_Pusab.bin"
+};
 
 banked(61.data) const u8 pal_startup[] = {
     0x0f, 0x00, 0x10, 0x20,
@@ -25,9 +28,8 @@ banked(61.data) const unsigned char nt_startup[] = {
 };
 
 banked(61.func) void state_startup(){
-    se_vram_address(0x800);
-    //se_vram_donut_decompress(chr_menu_global, chr_bank_0);
-    //se_vram_donut_decompress(chr_menu_font_pusab, chr_bank_0);
+    se_vram_address(0x200);
+    se_vram_donut_decompress(chr_font_pusab, 61);
     se_vram_donut_decompress(chr_startup, 61);
 
     se_vram_address(0x2000);
@@ -35,26 +37,28 @@ banked(61.func) void state_startup(){
 
     se_set_palette_background(pal_startup);
 
-    se_set_palette_brightness(0);
+    se_set_palette_brightness_all(0);
     se_turn_on_rendering();
     for(char stall=8; stall>0; stall--){
         se_wait_vsync();
     }
     se_fade_palette_to(0,4);
-    //se_set_palette_brightness(4);
 
     for(char stall=8; stall>0; stall--){
         se_wait_vsync();
     }
+
+    se_string_vram_buffer("ayy lmao. very quick writes", nametable_address_A(2,2));
 
     //sfx_play(sfx_playsound_01,0);
     
     for(char stall=90; stall>0; stall--){
         se_wait_vsync();
 
-        se_set_palette_brightness(4);
-        if((stall >= 87)) se_set_palette_brightness(3);
-        if((stall >= 80) && (stall < 83)) se_set_palette_brightness(3);
+        /*se_set_palette_brightness_all(4);
+        if((stall >= 87)) se_set_palette_brightness_all(3);
+        if((stall >= 80) && (stall < 83)) se_set_palette_brightness_all(3);
+        */
     }
 
     se_fade_palette_to(4,0);

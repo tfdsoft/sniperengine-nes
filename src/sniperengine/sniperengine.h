@@ -6,6 +6,11 @@ typedef unsigned long u32;
 #define XSTR(x) #x
 #define STR(x) XSTR(x)
 
+#define nametable_address_A(x,y) (0x2000 + ((y<<5) + x))
+#define nametable_address_B(x,y) (0x2400 + ((y<<5) + x))
+#define nametable_address_C(x,y) (0x2800 + ((y<<5) + x))
+#define nametable_address_D(x,y) (0x2c00 + ((y<<5) + x))
+
 #define banked(bank) __attribute__((section(".prg_rom_"STR(bank)),used))
 #define file(symbol, bank) __attribute__((section((".prg_rom_"STR(bank))),retain)) const uint8_t symbol[]
 
@@ -21,6 +26,7 @@ __attribute__((section(".aligned"),retain)) struct OAM_BUF {
 extern u8 se_ppu_ctrl_var, se_ppu_mask_var;
 extern u8 se_palette_update;
 
+__attribute__((leaf)) void se_init();
 
 __attribute__((leaf)) void banked_call_a000(u8 bank, void(*method)(void));
 __attribute__((leaf)) void set_prg_c000(u8 bank);
@@ -44,7 +50,12 @@ __attribute__((leaf)) void se_clear_palette();
 __attribute__((leaf)) void se_set_palette_color(u8 index, u8 color);
 __attribute__((leaf)) void se_set_palette_brightness_background(u8 bright);
 __attribute__((leaf)) void se_set_palette_brightness_sprites(u8 bright);
-__attribute__((leaf)) void se_set_palette_brightness(u8 bright);
+__attribute__((leaf)) void se_set_palette_brightness_all(u8 bright);
 __attribute__((leaf)) void se_fade_palette_to(u8 from, u8 to);
 
 __attribute__((leaf)) void se_clear_sprites();
+
+
+__attribute__((leaf)) void se_string_vram_buffer(
+	const char *data, const u16 ppu_addr
+);
