@@ -1294,12 +1294,12 @@ PPU_DATA = $2007
         sty se_joypad,x        ; put get put GET
         bne @poll_mouse             ; put get (put)
 
-    @poll_controller
+    @poll_controller:
         lda controller_port ; put get put GET        // Starts: 619
         and #3           ; put get*         *672
         cmp #1           ; put get
         rol joypad1 ; put get put get put    // This can desync, but we finish before it matters.
-        bcc poll_controller             ; get put (get)
+        bcc @poll_controller             ; get put (get)
 
     ;".if 0" // TODO support SNES extra buttons 
     ;    "STY joypad1+1" // get put get
