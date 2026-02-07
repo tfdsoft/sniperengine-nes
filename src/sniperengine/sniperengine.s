@@ -61,7 +61,7 @@ se_sprite_id:       .res 1
 se_rle_tag:         .res 1
 se_rle_byte:        .res 1
 
-se_vram_buffer = $140
+se_vram_buffer = $100   ;DONUT BUFFER IS ALSO HERE!!!!
 
 
 .segment "_pprg__rom__fixed__lo"
@@ -137,7 +137,7 @@ jmp se_draw_metasprite
 ;;  CAN BE USED TO SPEED UP SOME CALCULATIONS.
 ;;  STARTS AT $8200
 ;;
-.align 256
+;.align 256
 .proc se_palette_brightness_table
     .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;0
     .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;1
@@ -305,7 +305,7 @@ set_chr_bank:
 temp = $05  ; 15 bytes are used
 
 ; jroweboy - donut starts at this addr + 64 because ???? but it works out just fine anyway
-donut_block_buffer = $0100  ; 64 bytes
+donut_block_buffer = $0110  ; 64 bytes
 
 ; .segment "_pzp":zeropage
 ; donut_stream_ptr:       .res 2
@@ -330,25 +330,36 @@ PPU_DATA = $2007
   ; sta donut_stream_ptr
   ; lda $03
   ; sta donut_stream_ptr+1
-  block_loop:
-    ldx #0
-    jsr .loword(donut_decompress_block)
-    cpx #64
-    bne end_block_upload
-      ; bail if donut_decompress_block does not
-      ; advance X by 64 bytes, indicating a header error.
+    block_loop:
+        ldx #0
+        jsr .loword(donut_decompress_block)
+        cpx #64
+        bne end_block_upload
+        ; bail if donut_decompress_block does not
+        ; advance X by 64 bytes, indicating a header error.
+
+    tsx
+    stx se_vram_tmp_stack_pointer
+    ldx #$0f    ; set temporary stack location for faster writes
+    txs
 
     ldx #256 - 64
     upload_loop:
-      lda a:donut_block_buffer - (256 - 64), x
-      sta PPU_DATA
-      inx
-      bmi upload_loop
-    bpl block_loop
+        pla ;lda a:donut_block_buffer - (256 - 64), x
+        sta PPU_DATA
+        inx
+        bmi upload_loop
+
+    ldx se_vram_tmp_stack_pointer
+    txs
+    bne block_loop
+
     ; ldx donut_block_count
     ; bne block_loop
-end_block_upload:
-rts
+    end_block_upload:
+    
+    
+    rts
 .endproc
 
 ;;
@@ -1069,6 +1080,8 @@ rts
         iny
         bne @copy_string
     :
+    stx se_vram_index
+
     lda #$ff
     sta se_vram_buffer,x
 
@@ -1087,25 +1100,35 @@ rts
     stx se_vram_tmp_stack_pointer
 
     ; push new stack value
-    ldx #$3f
+    ldx #$ff
     txs
 
     @1:
     ; ldy #0
     __get_next_instruction:
         pla
-        cmp #$40
-        bcc @update_single_tile
-
-        ;not horizontal? save upper address byte for arithmetic
         tax
-        lda se_ppu_ctrl_var
-        cpx #$80
-        bmi @update_horizontal_sequence
-        cpx #$ff
+        cmp #255
         beq @exit
 
+        sta __rc18
+        bit __rc18 ; V if horizontal, N if vertical
+
+        bvs @update_horizontal_sequence
+        bvc @update_single_tile
+        ;cmp #$40
+        ;bcc @update_single_tile
+
+        ;not horizontal? save upper address byte for arithmetic
+        ;tax
+        ;lda se_ppu_ctrl_var
+        ;cpx #$80
+        ;bmi @update_horizontal_sequence
+        ;cpx #$ff
+        ;beq @exit
+
     @update_vertical_sequence:
+        lda se_ppu_ctrl_var
         ora #$04
         bne @update_common_sequence
 
@@ -1119,6 +1142,7 @@ rts
         bcc __get_next_instruction
 
     @update_horizontal_sequence:
+        lda se_ppu_ctrl_var
         and #$fb
 
     @update_common_sequence:
@@ -1134,16 +1158,18 @@ rts
 
         bmi @update_repeated_byte
 
-        ;tax
-    @update_common_sequence_loop:
+        tax
+    ;@update_common_sequence_loop:
         ;pla
         ;sta $2007
         ;dex
         ;bne @update_common_sequence_loop
 
         ;; larger overhead, but the fastest possible writes
-        tax
-        lda the_funny_fours_table_lmao,x
+        ;tax
+        ;lda the_funny_fours_table_lmao,x
+        asl
+        asl
         tay
         lda #<pla_sta_2007_table_end ; low byte
         ldx #>pla_sta_2007_table_end ; high byte
@@ -1177,10 +1203,7 @@ rts
     jmp __post_vram_update
 
     return_to_flush_vram_update:
-        lda se_ppu_ctrl_var
-        sta $2000
-
-        bne __get_next_instruction
+        
 
 
 ;.align 256
@@ -1190,18 +1213,13 @@ the_funny_pla_sta_2007_table_lmao:
         sta $2727
     .endrepeat
     pla_sta_2007_table_end:
-    jmp return_to_flush_vram_update
-.endproc
 
-the_funny_fours_table_lmao:
-    .byte $00,$04,$08,$0c
-    .byte $10,$14,$18,$1c
-    .byte $20,$24,$28,$2c
-    .byte $30,$34,$38,$3c
-    .byte $40,$44,$48,$4c
-    .byte $50,$54,$58,$5c
-    .byte $60,$64,$68,$6c
-    .byte $70,$74,$78,$7c
+    lda se_ppu_ctrl_var
+    sta $2000
+    jmp __get_next_instruction
+
+;the_funny_sta_2007_table_lmao:
+.endproc
 
 
 
@@ -1224,6 +1242,9 @@ the_funny_fours_table_lmao:
     cmp #%00011000
     jne @skip_all_updates  ; if not, skip vram updates
         ;; START OF VRAM UPDATES
+        lda #0
+        sta $2001
+
         ldy se_palette_update
         jeq @skip_palette   ; skip palette if not needed
 
@@ -1306,12 +1327,14 @@ the_funny_fours_table_lmao:
     sta $2005
     stx $2005
 
-    lda se_ppu_ctrl_var
-    sta $2000
+    ;lda se_ppu_ctrl_var
+    ;sta $2000
     lda se_ppu_mask_var
     sta $2001
     lda #2
     sta $4014
+
+    ;cli
 
     inc se_frame_count
 

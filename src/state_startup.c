@@ -48,17 +48,19 @@ banked(61.func) void state_startup(){
         se_wait_vsync();
     }
 
-    se_string_vram_buffer("ayy lmao. very quick writes", nametable_address_A(2,2));
+    for(char i=0;i<6;i++)
+    se_string_vram_buffer("THIRTY TWO BYTES! ABSOLUTE PEAK!", nametable_address_A(0,(2+i)));
+    
 
     //sfx_play(sfx_playsound_01,0);
     
     for(char stall=90; stall>0; stall--){
         se_wait_vsync();
 
-        /*se_set_palette_brightness_all(4);
+        se_set_palette_brightness_all(4);
         if((stall >= 87)) se_set_palette_brightness_all(3);
         if((stall >= 80) && (stall < 83)) se_set_palette_brightness_all(3);
-        */
+        
     }
 
     se_fade_palette_to(4,0);
