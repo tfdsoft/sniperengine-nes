@@ -40,6 +40,10 @@ se_name_upd_enable: .res 1
 se_vram_index:      .res 1
 se_vram_tmp_stack_pointer:  .res 1
 
+se_joypad:          .res 7
+se_mouse_mask:      .res 1
+se_no_mouse:        .res 1
+
 ;se_rle_pointer:     .res 2 ;__rc2 is used instead
 
 .segment "BSS"
@@ -1206,12 +1210,12 @@ PPU_DATA = $2007
         
 
 
-;.align 256
-the_funny_pla_sta_2007_table_lmao:
-    .repeat 32,i
-        pla
-        sta $2727
-    .endrepeat
+    ;.align 256
+    the_funny_pla_sta_2007_table_lmao:
+        .repeat 32,i
+            pla
+            sta $2727
+        .endrepeat
     pla_sta_2007_table_end:
 
     lda se_ppu_ctrl_var
@@ -1221,6 +1225,114 @@ the_funny_pla_sta_2007_table_lmao:
 ;the_funny_sta_2007_table_lmao:
 .endproc
 
+;;
+;;  OAM DMA SHENANIGANS
+;;  ok so basically, controller reads aligned to OAM DMA
+;;
+.export se_safe_controller_polling
+.proc se_safe_controller_polling
+    joypad2 = se_joypad+1
+    joypad1 = se_joypad+4
+    controller_port_1 = $4016
+    controller_port_2 = $4017
+    mouse_port = controller_port_2
+    controller_port = controller_port_1
+    kMouseZero = 0
+    kMouseButtons = 1
+    kMouseY = 2
+    kMouseX = 3
+
+    ; save registers (this *is* called from nmi, after all)
+    lda __rc2
+    pha
+    lda __rc3
+    pha
+    lda __rc4
+    pha
+    lda __rc6
+    pha
+    lda __rc7
+    pha
+    
+    ;save previous controller state
+    lda joypad1
+    sta __rc6
+
+    ;save previous controller state
+    lda joypad2
+    sta __rc7
+
+    ;save previous mouse state
+    lda se_joypad + kMouseY
+    sta __rc2
+    lda se_joypad + kMouseX
+    sta __rc3
+    lda se_joypad + kMouseButtons
+    sta __rc4
+
+    ;strobe joypads
+    ldx #0
+    ldy #1
+    sty se_joypad
+    sty controller_port_1
+    stx controller_port_1
+
+    ;INITIATE THE DMA!
+    iny
+    sty $4014
+
+    ; poll
+    @poll_mouse:
+        lda se_mouse_mask    ; get put get*     *576  // Starts: 4, 158, 312, 466, [620]
+        and mouse_port   ; put get put GET
+        cmp #1           ; put get
+        rol se_joypad,x        ; put get put get* PUT GET  *432
+        bcc @poll_mouse            ; put get (put)
+
+        inx                ; put get
+        cpx #4           ; put get
+        sty se_joypad,x        ; put get put GET
+        bne @poll_mouse             ; put get (put)
+
+    @poll_controller
+        lda controller_port ; put get put GET        // Starts: 619
+        and #3           ; put get*         *672
+        cmp #1           ; put get
+        rol joypad1 ; put get put get put    // This can desync, but we finish before it matters.
+        bcc poll_controller             ; get put (get)
+
+    ;".if 0" // TODO support SNES extra buttons 
+    ;    "STY joypad1+1" // get put get
+    ;    "NOP"                // put get
+    ;"1:"
+    ;    "LDA CONTROLLER_PORT \n" // put get* put GET *848  // Starts: 751, [879]
+    ;    "AND #$03 \n"           // put get
+    ;    "CMP #$01 \n"           // put get
+    ;    "ROL joypad1+1 \n" // put get put get put    // This can desync, but we finish before it matters.
+    ;    "BCC 1b \n"             // get* put (get)   *860
+
+
+    ; calculate the remaining fields:
+    ; pressed
+    lda __rc6
+    eor #$ff
+    and joypad1
+    sta joypad1 + 1
+
+
+    pla
+    sta __rc7
+    pla
+    sta __rc6
+    pla
+    sta __rc4
+    pla
+    sta __rc3
+    pla
+    sta __rc2
+    
+    rts
+.endproc
 
 
 
