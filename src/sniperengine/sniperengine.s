@@ -43,6 +43,10 @@ se_vram_tmp_stack_pointer:  .res 1
 se_joypad:          .res 7
 se_mouse_mask:      .res 1
 se_no_mouse:        .res 1
+.export se_joypad,se_mouse_mask,se_no_mouse
+
+se_post_nmi_ptr:    .res 2
+.export se_post_nmi_ptr
 
 ;se_rle_pointer:     .res 2 ;__rc2 is used instead
 
@@ -170,6 +174,18 @@ jmp se_draw_metasprite
 ;;
 .export se_init
 .proc se_init
+    ; set post-nmi pointer
+    lda #<just_a_freakin_rts
+    ldx #>just_a_freakin_rts
+    sta se_post_nmi_ptr + 0
+    stx se_post_nmi_ptr + 1
+
+    ; disable apu frame counter irq
+    lda #$c0
+    sta $4017
+    ; disable mapper irq
+    sta $e000
+
     jsr se_clear_palette
     jsr se_clear_sprites
 
@@ -199,6 +215,8 @@ jmp se_draw_metasprite
     rts
 .endproc
 
+just_a_freakin_rts:
+    rts
 
 
 ;;
@@ -1229,6 +1247,13 @@ PPU_DATA = $2007
 ;;  OAM DMA SHENANIGANS
 ;;  ok so basically, controller reads aligned to OAM DMA
 ;;
+
+MouseBoundsMin:
+    .byte 1,1
+MouseBoundsMax:
+    .byte 254,239
+
+
 .export se_safe_controller_polling
 .proc se_safe_controller_polling
     joypad2 = se_joypad+1
@@ -1319,6 +1344,105 @@ PPU_DATA = $2007
     and joypad1
     sta joypad1 + 1
 
+    ; released
+    lda joypad1
+    eor #$ff
+    and __rc6
+    sta joypad1 + 2
+
+    ; Check the report to see if we have a snes mouse plugged in
+    lda se_joypad + kMouseButtons
+    and #15
+    cmp #1
+    beq @snes_mouse_detected
+        ; no mouse? treat this as a standard controller instead
+        lda se_joypad + kMouseZero
+        sta joypad2
+
+        ; pressed
+        lda __rc7
+        eor #$ff
+        and joypad2
+        sta joypad2 + 1
+
+        ; released
+        lda joypad1
+        eor #$ff
+        and __rc7
+        sta joypad2 + 2
+
+        ; no snes mouse, so leave the first field empty
+        ldx #0
+        stx se_joypad + kMouseZero
+        inx
+        stx se_no_mouse
+        jmp @exit
+
+    @snes_mouse_detected:
+        ldx #1
+
+    @loop:
+        lda se_joypad + kMouseY,x
+        bpl :+
+            ; subtract the negative number instead
+            and #$7f
+            sta se_joypad + kMouseZero
+            lda __rc2,x
+            sec
+            sbc se_joypad + kMouseZero
+            ; check if we underflowed
+            bcc @wrappednegative
+
+            ;check lower bounds
+            cmp MouseBoundsMin,x
+            bcs @setvalue   ; didn't wrap so set the value now
+        
+        @wrappednegative:
+            lda MouseBoundsMin,x
+            jmp @setvalue
+
+        :   ; add the positive number
+            clc
+            adc __rc2,x 
+            ; check if we wrapped, set to the max bounds if we did
+            bcs @wrapped
+
+            ; check the upper bounds
+            cmp MouseBoundsMax,x
+            bcc @setvalue
+
+        @wrapped:
+            lda MouseBoundsMax,x 
+        
+        @setvalue:
+            sta se_joypad + kMouseY,x 
+            dex
+            bpl @loop
+
+    ; calculate newly pressed buttons and shift it into byte zero
+    lda __rc4
+    eor #$c0
+    and se_joypad + kMouseButtons
+    rol
+    ror se_joypad + kMouseZero
+    rol
+    ror se_joypad + kMouseZero
+
+    ; calculate newly released buttons
+
+    lda se_joypad + kMouseButtons
+    eor #$c0
+    and __rc4
+    rol
+    ror se_joypad + kMouseZero
+    rol
+    ror se_joypad + kMouseZero
+
+    ; set the connected bit
+    sec
+    ror se_joypad + kMouseZero
+
+    @exit:
 
     pla
     sta __rc7
@@ -1439,16 +1563,88 @@ PPU_DATA = $2007
     sta $2005
     stx $2005
 
-    ;lda se_ppu_ctrl_var
-    ;sta $2000
     lda se_ppu_mask_var
     sta $2001
-    lda #2
-    sta $4014
-
-    ;cli
+    jsr se_safe_controller_polling
+    cli
 
     inc se_frame_count
+
+    lda __rc2
+    pha
+    lda __rc3
+    pha
+    lda __rc4
+    pha
+    lda __rc5
+    pha
+    lda __rc6
+    pha
+    lda __rc7
+    pha
+    lda __rc8
+    pha
+    lda __rc9
+    pha
+    lda __rc10
+    pha
+    lda __rc11
+    pha
+    lda __rc12
+    pha
+    lda __rc13
+    pha
+    lda __rc14
+    pha
+    lda __rc15
+    pha
+    lda __rc16
+    pha
+    lda __rc17
+    pha
+    lda __rc18
+    pha
+    lda __rc19
+    pha
+
+    jsr @post_nmi
+
+    pla
+    sta __rc19
+    pla
+    sta __rc18
+    pla
+    sta __rc17
+    pla
+    sta __rc16
+    pla
+    sta __rc15
+    pla
+    sta __rc14
+    pla
+    sta __rc13
+    pla
+    sta __rc12
+    pla
+    sta __rc11
+    pla
+    sta __rc10
+    pla
+    sta __rc9
+    pla
+    sta __rc8
+    pla
+    sta __rc7
+    pla
+    sta __rc6
+    pla
+    sta __rc5
+    pla
+    sta __rc4
+    pla
+    sta __rc3
+    pla
+    sta __rc2
 
     pla
     tay
@@ -1456,6 +1652,9 @@ PPU_DATA = $2007
     tax
     pla
     rti
+    
+@post_nmi:
+    jmp (se_post_nmi_ptr)
 .endproc
 
 

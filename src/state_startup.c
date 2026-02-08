@@ -48,7 +48,7 @@ banked(61.func) void state_startup(){
         se_wait_vsync();
     }
 
-    for(char i=0;i<6;i++)
+    for(char i=0;i<4;i++)
     se_string_vram_buffer("THIRTY TWO BYTES! ABSOLUTE PEAK!", nametable_address_A(0,(2+i)));
     
 
