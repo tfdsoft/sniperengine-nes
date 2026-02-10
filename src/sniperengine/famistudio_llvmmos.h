@@ -141,19 +141,3 @@ void __attribute__((__leaf__)) famistudio_sfx_sample_play(unsigned char sample_i
 #endif
 #endif
 
-
-__asm__ (
-    "famistudio_dpcm_bank_callback: \n"
-    "clc \n"
-    "adc #"STR(dpcm_bank_0)" \n"
-    "jmp set_prg_8000 \n"
-    ".globl famistudio_dpcm_bank_callback \n"
-);
-
-//void famistudio_dpcm_bank_callback(unsigned char bank){
-//    set_prg_8000((dpcm_bank_0-1) + bank);
-//}
-
-//__asm__ (
-//    ".include \"./src/famistudio_dpcm_callback.s\""
-//);

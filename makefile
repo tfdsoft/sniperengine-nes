@@ -105,12 +105,12 @@ $(TMPDIR):
 	$(call mkdir,$(TMPDIR))
 
 
-#$(TMPDIR)/famistudio.o: music/*.s
-#	$(CA65) music/music_assets.s -o $@
+$(TMPDIR)/sfx.o: src/sniperengine/music/*.s
+	$(CA65) src/sniperengine/music/music_assets.s -o $@
 
-#$(TMPDIR)/music.o: music/EXPORTS/lvlset_$(LEVELSET)/music_bank*.dmc music/EXPORTS/lvlset_$(LEVELSET)/music_*.s music/NoteTables/*.* 
+$(TMPDIR)/music.o: src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/music_bank*.dmc src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/music_*.s src/sniperengine/NoteTables/*.* 
 #	compile all of the music assets into one giant object file
-#	$(CA65) music/EXPORTS/lvlset_$(LEVELSET)/music_data_header.s -o $@
+	$(CA65) src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/music_data_header.s -o $@
 
 #$(TMPDIR)/donut.o: src/chr/*.s
 #	$(CA65) src/chr/donut.s -o $@
@@ -121,9 +121,8 @@ $(TMPDIR):
 $(TMPDIR)/sniperengine.o: src/sniperengine/sniperengine.s
 	$(CA65) src/sniperengine/sniperengine.s -o $@
 
-$(OUTDIR)/$(NAME).nes: $(OUTDIR) $(TMPDIR)/sniperengine.o #$(TMPDIR)/music.o $(TMPDIR)/assets.o $(TMPDIR)/donut.o src/*.h src/*.c src/*.s src/gamestates/*.c src/defines/*.h music/EXPORTS/lvlset_$(LEVELSET)/*.h $(CFG)
-	$(CC) src/main.c $(TMPDIR)/*.o $(CFLAGS) $(LDFLAGS) -o $@
-# $(call cc65IncDir,music/EXPORTS/lvlset_$(LEVELSET)) 
+$(OUTDIR)/$(NAME).nes: $(OUTDIR) $(TMPDIR)/sniperengine.o $(TMPDIR)/music.o $(TMPDIR)/sfx.o  src/*.h src/*.c src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/*.h $(CFG)
+	$(CC) src/main.c $(TMPDIR)/*.o $(call cc65IncDir,src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)) $(CFLAGS) $(LDFLAGS) -o $@
 
 
 

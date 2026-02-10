@@ -1,0 +1,17 @@
+song_choose_your_seeds = 0
+song_watery_graves = 1
+song_celebrawl = 2
+song_win_music_dot_oh_gee_gee = 3
+song_adventure_start = 4
+song_final_fanfare_dot_oh_gee_gee = 5
+song_ultimate_battle = 6
+song_me_when_theres_zombies_on_my_lawn = 7
+song_grasswalk = 8
+song_graze_the_roof = 9
+song_crazy_dave = 10
+song_moongrains = 11
+song_braniac_maniac = 12
+song_zen_garden = 13
+song_rigor_mormist = 14
+song_loonboon = 15
+song_max = 16

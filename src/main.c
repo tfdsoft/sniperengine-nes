@@ -1,8 +1,12 @@
 // the lifeblood of the engine. don't remove these lines.
+#include <nes.h>
+
+
 #include "sniperengine/sniperengine.h"
 #include "ines_header.h"
 #include "ram.h"
-#include <nes.h>
+
+
 
 #include "state_startup.c"
 
@@ -12,6 +16,12 @@ banked(fixed.main) int main(void) {
     PPU.mask = se_ppu_mask_var = 0b00000110;
     PPU.status;
     se_init();
+
+    set_prg_a000(music_bank_0);
+    famistudio_init(1,0xa000);
+
+    se_post_nmi_ptr = se_music_update;
+    
 
     se_clear_palette();
 
@@ -23,7 +33,12 @@ banked(fixed.main) int main(void) {
 
         switch (gamestate){
             default:
-                banked_call_a000(61,state_startup);
+                banked_call_a000(60,state_startup);
+                break;
+            case 0xff:
+                banked_call_a000(60,thegreet_message);
+                break;
         }
+        se_post_nmi_ptr = nofunction;
     }
 }

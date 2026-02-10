@@ -69,6 +69,9 @@ se_sprite_id:       .res 1
 se_rle_tag:         .res 1
 se_rle_byte:        .res 1
 
+se_music_bank:      .res 1
+.export se_music_bank
+
 se_vram_buffer = $100   ;DONUT BUFFER IS ALSO HERE!!!!
 
 
@@ -88,13 +91,13 @@ jmp banked_call_a000
 jmp set_chr_bank
 
 ;; vram functions
-;.align 32
+.align 32
 jmp se_vram_donut_decompress
 jmp se_vram_unrle
 
 
 ;; ppu functions
-;.align 32
+.align 32
 jmp se_wait_vsync
 jmp se_turn_off_rendering
 jmp se_turn_on_rendering
@@ -113,6 +116,18 @@ jmp se_clear_sprites
 jmp se_draw_sprite
 jmp se_draw_metasprite
 
+;; vram buffer
+.align 32
+jmp se_set_vram_update
+jmp se_set_vram_buffer
+jmp se_one_vram_buffer
+jmp se_string_vram_buffer
+
+
+;; memory stuff
+.align 32
+jmp se_memory_fill
+jmp se_memory_copy
 
 ;;  
 ;;  IDENTITY TABLE
@@ -121,7 +136,7 @@ jmp se_draw_metasprite
 ;;
 .align 256
 .export se_identity_table
-.proc se_identity_table
+se_identity_table:
     .byte $00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0a,$0b,$0c,$0d,$0e,$0f
     .byte $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$1a,$1b,$1c,$1d,$1e,$1f
     .byte $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$2a,$2b,$2c,$2d,$2e,$2f
@@ -138,7 +153,7 @@ jmp se_draw_metasprite
     .byte $d0,$d1,$d2,$d3,$d4,$d5,$d6,$d7,$d8,$d9,$da,$db,$dc,$dd,$de,$df
     .byte $e0,$e1,$e2,$e3,$e4,$e5,$e6,$e7,$e8,$e9,$ea,$eb,$ec,$ed,$ee,$ef
     .byte $f0,$f1,$f2,$f3,$f4,$f5,$f6,$f7,$f8,$f9,$fa,$fb,$fc,$fd,$fe,$ff
-.endproc
+
 
 ;;  
 ;;  PALETTE BRIGHTNESS TABLE
@@ -146,7 +161,7 @@ jmp se_draw_metasprite
 ;;  STARTS AT $8200
 ;;
 ;.align 256
-.proc se_palette_brightness_table
+se_palette_brightness_table:
     .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;0
     .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;1
     .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;2
@@ -164,7 +179,7 @@ jmp se_draw_metasprite
     .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
     .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
     .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
-.endproc
+
 
 
 
@@ -175,8 +190,8 @@ jmp se_draw_metasprite
 .export se_init
 .proc se_init
     ; set post-nmi pointer
-    lda #<just_a_freakin_rts
-    ldx #>just_a_freakin_rts
+    lda #<nofunction
+    ldx #>nofunction
     sta se_post_nmi_ptr + 0
     stx se_post_nmi_ptr + 1
 
@@ -189,6 +204,7 @@ jmp se_draw_metasprite
     jsr se_clear_palette
     jsr se_clear_sprites
 
+    ; set up default banks
     lda #0
     ldx #0
     jsr set_chr_bank
@@ -210,14 +226,20 @@ jmp se_draw_metasprite
     inx
     jsr set_chr_bank
 
+    ; set up vram buffer
     jsr se_set_vram_buffer
+
+    ; enable sram
+    lda #%10000000
+    sta $a001
 
     rts
 .endproc
 
-just_a_freakin_rts:
+.export nofunction
+.proc nofunction
     rts
-
+.endproc
 
 ;;
 ;;  MMC3 BANKING FUNCTIONS
@@ -713,11 +735,25 @@ PPU_DATA = $2007
     tax
     lda __prg_a000
     pha
+
+    ; stop the vram buffer *juuuuuust* in case
+    lda #255
+    sta $100
+
     txa
 
     jsr set_prg_a000
 
+    ; disable nmi
+    lda se_ppu_ctrl_var
+    and #%01111111
+    sta $2000
+
     jsr donut_block
+
+    ; revert ppu_ctrl
+    lda se_ppu_ctrl_var
+    sta $2000
 
     pla
     jsr set_prg_a000
@@ -1019,6 +1055,8 @@ PPU_DATA = $2007
     rts
 .endproc
 
+
+
 ;;
 ;;  VRAM BUFFER STUFF
 ;;  easily write to the screen with these several cool tricks!
@@ -1116,7 +1154,7 @@ PPU_DATA = $2007
     rts
 .endproc
 
-.export flush_vram_update2
+; system from neslib, modified to be  T H E  S P E E D
 .proc flush_vram_update2
     tsx
     stx se_vram_tmp_stack_pointer
@@ -1239,9 +1277,117 @@ PPU_DATA = $2007
     lda se_ppu_ctrl_var
     sta $2000
     jmp __get_next_instruction
-
-;the_funny_sta_2007_table_lmao:
 .endproc
+
+
+
+;;
+;;  MEMORY FUNCTIONS
+;;  move memory around!
+;;
+
+.export se_memory_fill
+.proc se_memory_fill
+    ;   A: value to fill with
+    ;   X: length of memory region (lo)
+    ;__rc2: ptr to memory to fill (lo)
+    ;__rc3: ptr to memory to fill (hi)
+    ;__rc4: length of memory region (hi)
+
+    
+    pha
+    ldy __rc2 ; save low byte of memory ptr
+    lda #0
+    sta __rc2 ; write 0 to low byte to save cycles later
+
+    ; is the pointer in the $2xxx region? (likely ppu_data)
+    lda __rc3
+    and #$f0 ; mask off the lower four bits
+    cmp #$20
+    beq @no_inc_pointer
+    pla
+
+    @inc_loop:
+        sta (__rc2),y 
+        iny
+        bne :+ ; inc pointer
+        inc __rc3
+        : 
+        dex
+        bne @inc_loop
+    
+    @il_is_remaining_length_zero:
+        cpx __rc4
+        beq @done
+        dec __rc4
+        jmp @inc_loop
+
+
+    @no_inc_pointer:
+    pla
+
+    @no_inc_loop:
+        sta $2007 ; using indexed instructions breaks it :sob: 
+        dex
+        bne @no_inc_loop
+
+    @nil_is_remaining_length_zero:
+        cpx __rc4
+        beq @done
+        dec __rc4
+        jmp @no_inc_loop
+
+    @done:
+    rts
+        
+
+.endproc
+
+; memcpy(*to, *from, numBytes);
+.export se_memory_copy
+.proc se_memory_copy
+    ;   A: length of memory region (lo)
+    ;   X: length of memory region (hi)
+    ;__rc2: ptr to memory to (lo)
+    ;__rc3: ptr to memory to (hi)
+    ;__rc4: ptr to memory from (lo)
+    ;__rc5: ptr to memory from (hi)
+
+    stx __rc6 ; high byte of length is now in a zp register
+    tax
+    ldy #0
+
+    @inc_loop:
+        lda (__rc4),y 
+        sta (__rc2),y 
+        iny
+        bne :+ ; inc pointer if Y=0
+            inc __rc3
+            inc __rc5
+        :
+        dex
+        bne @inc_loop
+    ; is X equal to zero? if so, decrement __rc6
+        dec __rc6
+        bpl @inc_loop ; fall through if X is negative
+    
+    @done:
+    rts
+        
+
+.endproc
+
+
+
+;;
+;;  MUSIC STUFF
+;;  music and sound effects, powered by FamiStudio!
+;;
+    
+    ; see the header file
+
+
+
 
 ;;
 ;;  OAM DMA SHENANIGANS
@@ -1472,7 +1618,11 @@ MouseBoundsMax:
     tya
     pha
 
-    ;; is rendering enabled?
+    ; disable rendering on the ppu side
+    lda #0
+    sta $2001
+
+    ; is rendering enabled on the engine side?
     lda se_ppu_mask_var
     and #%00011000
     cmp #%00011000
@@ -1549,24 +1699,21 @@ MouseBoundsMax:
 
             lda se_scroll_x
             ldx se_scroll_y
-            sta se_scroll_x
-            stx se_scroll_y
-
+            sta $2005
+            stx $2005
             lda se_ppu_ctrl_var
             sta $2000
+            
+            
 
         @skip_vram_updates:
+        lda se_ppu_mask_var
+        sta $2001
+
+        jsr se_safe_controller_polling
+        cli
 
     @skip_all_updates:
-    lda se_scroll_x
-    ldx se_scroll_y
-    sta $2005
-    stx $2005
-
-    lda se_ppu_mask_var
-    sta $2001
-    jsr se_safe_controller_polling
-    cli
 
     inc se_frame_count
 
@@ -1662,3 +1809,5 @@ MouseBoundsMax:
 
 
 
+;.align 128
+.include "famistudio_ca65.s"

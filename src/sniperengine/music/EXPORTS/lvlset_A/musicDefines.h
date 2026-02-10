@@ -1,0 +1,17 @@
+#define song_choose_your_seeds 0
+#define song_watery_graves 1
+#define song_celebrawl 2
+#define song_win_music_dot_oh_gee_gee 3
+#define song_adventure_start 4
+#define song_final_fanfare_dot_oh_gee_gee 5
+#define song_ultimate_battle 6
+#define song_me_when_theres_zombies_on_my_lawn 7
+#define song_grasswalk 8
+#define song_graze_the_roof 9
+#define song_crazy_dave 10
+#define song_moongrains 11
+#define song_braniac_maniac 12
+#define song_zen_garden 13
+#define song_rigor_mormist 14
+#define song_loonboon 15
+#define song_max 16

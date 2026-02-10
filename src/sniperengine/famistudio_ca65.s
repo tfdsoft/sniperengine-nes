@@ -84,7 +84,7 @@
 
 .define FAMISTUDIO_CA65_ZP_SEGMENT   ZEROPAGE
 .define FAMISTUDIO_CA65_RAM_SEGMENT  INIT
-.define FAMISTUDIO_CA65_CODE_SEGMENT _pprg__rom__fixed
+.define FAMISTUDIO_CA65_CODE_SEGMENT _pprg__rom__fixed__lo
 
 ;======================================================================================================================
 ; 2) AUDIO EXPANSION CONFIGURATION
@@ -4381,8 +4381,8 @@ famistudio_update:
 .if FAMISTUDIO_CFG_SFX_SUPPORT
 ;!!! FAMISTUDIO DRIVER MODIFICATION BEGIN
 ;*  MODIFIED
-    .import set_prg_a000
-    LDA #61
+    ;.import set_prg_a000
+    LDA #0
     JSR set_prg_a000
 ;!!! FAMISTUDIO DRIVER MODIFICATION END
 

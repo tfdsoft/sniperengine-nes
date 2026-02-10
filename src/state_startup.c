@@ -1,19 +1,21 @@
+#define state_startup_bank 60
+
 // some CHR data
-banked(61.data) __attribute__((retain)) const u8 chr_startup[] = {
+banked(state_startup_bank.data) __attribute__((retain)) const u8 chr_startup[] = {
     #embed "./chr/Menu_TFDLogo.bin"
 };
-banked(61.data) __attribute__((retain)) const u8 chr_font_pusab[] = {
+banked(state_startup_bank.data) __attribute__((retain)) const u8 chr_font_pusab[] = {
     #embed "./chr/Menu_Font_Pusab.bin"
 };
 
-banked(61.data) const u8 pal_startup[] = {
+banked(state_startup_bank.data) const u8 pal_startup[] = {
     0x0f, 0x00, 0x10, 0x20,
     0x0f, 0x01, 0x11, 0x21,
     0x0f, 0x02, 0x12, 0x22,
     0x0f, 0x03, 0x13, 0x23,
 };
 
-banked(61.data) const unsigned char nt_startup[] = {
+banked(state_startup_bank.data) const unsigned char nt_startup[] = {
     0x01,0x00,0x01,0xfe,0x00,0x01,0x45,0x80,0x81,0x00,0x01,0x12,0xc0,0x00,0x01,0x08,
 0x82,0x83,0x84,0x85,0x00,0x01,0x0d,0xc1,0x00,0xc2,0xc3,0xc4,0x00,0x01,0x07,0x86,
 0x87,0x88,0x89,0x00,0x01,0x09,0xc5,0xc6,0xc7,0xc8,0xc9,0xca,0x00,0xcb,0xcc,0xcd,
@@ -27,15 +29,24 @@ banked(61.data) const unsigned char nt_startup[] = {
 0x01,0xfe,0x00,0x01,0xc7,0x01,0x00
 };
 
-banked(61.func) void state_startup(){
-    se_vram_address(0x200);
-    se_vram_donut_decompress(chr_font_pusab, 61);
-    se_vram_donut_decompress(chr_startup, 61);
+
+banked(state_startup_bank.func) void state_startup(){
+    se_vram_address(0);
+    se_memory_fill((void*)0x2007,0,256);
+    se_vram_donut_decompress(chr_font_pusab, state_startup_bank);
+    se_vram_donut_decompress(chr_startup, state_startup_bank);
 
     se_vram_address(0x2000);
     se_vram_unrle(nt_startup);
 
     se_set_palette_background(pal_startup);
+
+    se_vram_address(nametable_address_A(2,27));
+    //se_memory_fill((void*)0x2007, 0x20, 32);
+
+    // enable music
+    se_post_nmi_ptr = se_music_update;
+
 
     se_set_palette_brightness_all(0);
     se_turn_on_rendering();
@@ -48,18 +59,18 @@ banked(61.func) void state_startup(){
         se_wait_vsync();
     }
 
-    for(char i=0;i<4;i++)
+    for(char i=0;i<5;i++)
     se_string_vram_buffer("THIRTY TWO BYTES! ABSOLUTE PEAK!", nametable_address_A(0,(2+i)));
-    
 
-    //sfx_play(sfx_playsound_01,0);
+
+    se_sfx_play(sfx_boot,0);
     
     for(char stall=90; stall>0; stall--){
         se_wait_vsync();
 
         se_set_palette_brightness_all(4);
-        if((stall >= 87)) se_set_palette_brightness_all(3);
-        if((stall >= 80) && (stall < 83)) se_set_palette_brightness_all(3);
+        if((stall >= 85)) se_set_palette_brightness_all(5);
+        //if((stall >= 83) ) se_set_palette_brightness_all(5);
         
     }
 
@@ -75,7 +86,7 @@ banked(61.func) void state_startup(){
         sfx_play(sfx_explode_11,0);
         vram_adr(0x2000);
         vram_fill(0, 0x3c0);
-        memfill((uint8_t*)0x6000, 0, 0x2000);
+        memfill((u8*)0x6000, 0, 0x2000);
 
         str_vram_buffer(str_ripsave, 0x21c3);
 
@@ -88,6 +99,29 @@ banked(61.func) void state_startup(){
         se_turn_off_rendering();
     }*/
 
-    gamestate = 0x00;
+    gamestate = 0xff;
     return;
+}
+
+
+
+
+
+banked(state_startup_bank.func) void thegreet_message(){
+
+    
+
+    se_vram_address(nametable_address_A(0,0));
+    se_memory_fill((void*)0x2007, 0, 1024);
+    se_string_vram_buffer("WELCOME TO SNIPERENGINE.", nametable_address_A(4,14));
+
+    se_post_nmi_ptr = se_music_update;
+    se_music_play(song_zen_garden);
+
+    se_set_palette_brightness_all(4);
+    se_turn_on_rendering();
+
+    while(1){
+        se_wait_vsync();
+    }
 }

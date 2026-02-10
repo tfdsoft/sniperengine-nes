@@ -1,15 +1,18 @@
-static uint8_t music_bank;
-//uint8_t prev_bank;
-static uint8_t song_count;
-extern uint8_t famistudio_song_speed;
+#include "famistudio_llvmmos.h"
 
-__attribute__((noinline)) void music_play(uint8_t s){
+extern u8 se_music_bank;
+
+__attribute__((noinline)) void se_music_play(u8 s){
     
-    push_prg_a000();
+    //push_prg_a000();
+    __asm__(
+        "lda __prg_a000 \n"
+        "pha \n"
+    );
 
-    //uint8_t prev_bank = get_prg_a000();
+    //u8 prev_bank = get_prg_a000();
     //current_bank = music_bank_0;
-    song_count = 0;
+    u8 song_count = 0;
 
     // ok so we need to figure out what bank the
     // requested song is in.
@@ -41,7 +44,7 @@ __attribute__((noinline)) void music_play(uint8_t s){
             "pla \n"
             "ldx __prg_a000 \n"
 
-        :"=a"(song_count),"=x"(music_bank)
+        :"=a"(song_count),"=x"(se_music_bank)
         :"a"(s)
         :"y","p"
     );
@@ -49,21 +52,36 @@ __attribute__((noinline)) void music_play(uint8_t s){
     famistudio_init(1,0xa000);
     famistudio_music_play(song_count);
 
-    pop_prg_a000();
+    __asm__(
+        "pla \n"
+        "jsr set_prg_a000 \n"
+    );
 }
 
-__attribute__((noinline,retain)) void music_update(){
-    push_prg_a000();
-    set_prg_a000(music_bank);
+__attribute__((noinline)) void se_music_update(){
+    __asm__(
+        "lda __prg_a000 \n"
+        "pha \n"
+    );
+    set_prg_a000(se_music_bank);
     famistudio_update();
-    pop_prg_a000();
+    __asm__(
+        "pla \n"
+        "jsr set_prg_a000 \n"
+    );
 }
 
-__attribute__((noinline)) void sfx_play(uint8_t index, uint8_t channel){
-    push_prg_a000();
-    set_prg_a000(sfx_bank);
+__attribute__((noinline)) void se_sfx_play(u8 index, u8 channel){
+    __asm__(
+        "lda __prg_a000 \n"
+        "pha \n"
+    );
+    set_prg_a000(0);
     famistudio_sfx_init(0xa000);
     famistudio_sfx_play(index,channel);
-    pop_prg_a000();
+    __asm__(
+        "pla \n"
+        "jsr set_prg_a000 \n"
+    );
 }
 

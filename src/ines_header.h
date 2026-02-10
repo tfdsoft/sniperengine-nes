@@ -20,9 +20,12 @@ INES_TIMING_MULTIREGION;
 
 __asm__ (
     "__four_screen = 1 \n"
+    ".global __four_screen \n"
     // Expansion Port Sound Module
     "__console_type = 3 \n"
+    ".global __console_type \n"
     "__extended_console_type = 4 \n" 
+    ".global __extended_console_type \n"
 );
 
 

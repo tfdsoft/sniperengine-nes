@@ -35,5 +35,7 @@
 #define sfx_dirt_rise 33
 #define sfx_gravebutton 34
 #define sfx_tap 35
+#define sfx_siren 36
+#define sfx_boot 37
 
-#define sfx_max 36
+#define sfx_max 38
