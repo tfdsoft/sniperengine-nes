@@ -1,85 +1,10 @@
 {
-	songModule: "epsm.fms",
+	songModule: "famidash_epsm.fms",
 	songs: [
 		{
-			fmsSongName: "crazy dave",
-			lowerText: "Crazy Dave",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "choose your seeds",
-			lowerText: "Choose Your Seeds",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "grasswalk",
-			lowerText: "Grasswalk",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "moongrains",
-			lowerText: "Moongrains",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "watery graves",
-			lowerText: "Watery Graves",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "rigor mormist",
-			lowerText: "Rigor Mormist",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "graze the roof",
-			lowerText: "Graze the Roof",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "ultimate battle",
-			lowerText: "Ultimate Battle",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "braniac maniac",
-			lowerText: "Braniac Maniac",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "loonboon",
-			lowerText: "Loonboon",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "celebrawl",
-			lowerText: "Celebrawl",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "zen garden",
-			lowerText: "Zen Garden",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "me when there's zombies on my lawn",
-			lowerText: "Zombies On Your Lawn",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "WIN MUSIC DOT OH GEE GEE",
-			lowerText: "winmusic.ogg",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "ADVENTURE START",
-			lowerText: "losemusic.ogg",
-			originalArtistText: "LAURA SHIGIHARA",
-		},
-		{
-			fmsSongName: "FINAL FANFARE DOT OH GEE GEE",
-			lowerText: "finalfanfare.ogg",
-			originalArtistText: "LAURA SHIGIHARA",
+			fmsSongName: "Stay Inside Me EPSM",
+			lowerText: "Stay Inside Me",
+			originalArtistText: "idfk lmao",
 		},
 	],
 	SFX: [

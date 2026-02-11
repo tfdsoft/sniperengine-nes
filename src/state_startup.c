@@ -109,14 +109,12 @@ banked(state_startup_bank.func) void state_startup(){
 
 banked(state_startup_bank.func) void thegreet_message(){
 
-    
-
     se_vram_address(nametable_address_A(0,0));
     se_memory_fill((void*)0x2007, 0, 1024);
     se_string_vram_buffer("WELCOME TO SNIPERENGINE.", nametable_address_A(4,14));
 
     se_post_nmi_ptr = se_music_update;
-    se_music_play(song_zen_garden);
+    se_music_play(1);
 
     se_set_palette_brightness_all(4);
     se_turn_on_rendering();

@@ -2,10 +2,10 @@
 
 .if .not(useConstInitPtr)
 music_data_locations_lo:
-	.byte <music_data_pvz_deplanted_music0, <music_data_pvz_deplanted_music1, <music_data_pvz_deplanted_music2, <music_data_pvz_deplanted_music3, <music_data_pvz_deplanted_music4, <music_data_pvz_deplanted_music5
+	.byte <music_data_pvz_deplanted_music0
 music_data_locations_hi:
-	.byte >music_data_pvz_deplanted_music0, >music_data_pvz_deplanted_music1, >music_data_pvz_deplanted_music2, >music_data_pvz_deplanted_music3, >music_data_pvz_deplanted_music4, >music_data_pvz_deplanted_music5
+	.byte >music_data_pvz_deplanted_music0
 .endif
 
 music_counts:
-	.byte 6, 2, 2, 2, 2, $FF ;last bank is marked with an FF to always stop bank picking
+	.byte , $FF ;last bank is marked with an FF to always stop bank picking
