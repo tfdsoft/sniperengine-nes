@@ -6,7 +6,7 @@
 #include "ines_header.h"
 #include "ram.h"
 
-
+#include "./funny_custom_routines.h"
 
 #include "state_startup.c"
 
@@ -21,11 +21,8 @@ banked(fixed.main) int main(void) {
     famistudio_init(1,0xa000);
 
     se_post_nmi_ptr = se_music_update;
-    
 
     se_clear_palette();
-
-    
 
     while(1){
         __asm__("sei");

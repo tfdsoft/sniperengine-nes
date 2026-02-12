@@ -13,16 +13,20 @@ typedef unsigned long u32;
 #define nametable_address_C(x,y) (0x2800 + ((y<<5) + x))
 #define nametable_address_D(x,y) (0x2c00 + ((y<<5) + x))
 
+ #define lo(a) *((unsigned char *)&a)
+ #define hi(a) *(((unsigned char *)&a) + 1)
+
 #define banked(bank) __attribute__((section(".prg_rom_"STR(bank)),used))
+#define sram __attribute__((section(".prg_ram"),retain))
 #define file(symbol, bank) __attribute__((section((".prg_rom_"STR(bank))),retain)) const u8 symbol[]
 
 
-__attribute__((section(".aligned"),retain)) struct OAM_BUF {
+__attribute__((section(".aligned"),retain)) struct sprite_buffer {
     unsigned char y;
     unsigned char tile;
     unsigned char attr;
     unsigned char x;
-} OAM_BUF[64];
+} sprite_buffer[64];
 
 extern u8 se_frame_count;
 extern u8 se_ppu_ctrl_var, se_ppu_mask_var;
@@ -137,6 +141,24 @@ __attribute__((leaf)) void se_memory_fill(void* ptr, u8 data, u16 length);
 __attribute__((leaf)) void se_memory_copy(void* to, void* from, u16 length);
 
 
+#define se_write_function_to_irq_table(ptr, index) __asm__( \
+    "ldx se_irq_table_position \n" \
+    "lda #<"STR(ptr)" \n" \
+    "sta se_irq_table + "STR(index)", x \n" \
+    "lda #>"STR(ptr)" \n" \
+    "sta se_irq_table + "STR(index)"+1, x \n" \
+)
+
+#define se_play_sample(ptr, bank, rate) __asm__( \
+    "lda #<"STR(ptr)" \n" \
+    "ldx #>"STR(ptr)" \n" \
+    "sta $d1 \n" \
+    "stx $d2 \n" \
+    "lda #"STR(bank)" \n" \
+    "ldx #"STR(rate)" \n" \
+    "jsr se_play_sample \n" \
+)
+
 
 // == the compiler/linker figures these out ==
 #include "musicDefines.h"
@@ -163,14 +185,3 @@ __asm__ (
     "jmp set_prg_8000 \n"
     ".globl famistudio_dpcm_bank_callback \n"
 );
-
-
-#define se_play_sample(ptr, bank, rate) __asm__( \
-    "lda #<"STR(ptr)" \n" \
-    "ldx #>"STR(ptr)" \n" \
-    "sta $d1 \n" \
-    "stx $d2 \n" \
-    "lda #"STR(bank)" \n" \
-    "ldx #"STR(rate)" \n" \
-    "jsr se_play_sample \n" \
-)

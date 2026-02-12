@@ -1,24 +1,67 @@
-#include <ines.h>
-//#include <mapper.h>
+/*==============================================
+ *  ROM SETTINGS
+ *  customize your ROM configuration.
+**============================================*/
 
-// maxed out mmc3 prg
-MAPPER_PRG_ROM_KB(512);
+// Program ROM size (16 - 1024 kB) =============
+#define SE_PROGRAM_ROM_SIZE     512
+
+// Character RAM size (1 - 256 kB) =============
+#define SE_CHARACTER_RAM_SIZE   32
+
+// Work RAM size (1 - 8 kB) ====================
+#define SE_WORK_RAM_SIZE        8
+
+
+
+
+
+
+
+
+
+
+
+
+/*==============================================
+ *  You shouldn't have to touch anything
+ *  below this point.
+**============================================*/
+
+//#include <ines.h>
+
+//MAPPER_PRG_ROM_KB(STR(SE_PROGRAM_ROM_SIZE));
 
 // extra memory!
-MAPPER_PRG_NVRAM_KB(8);
-MAPPER_USE_BATTERY;
+//MAPPER_PRG_NVRAM_KB(STR(SE_WORK_RAM_SIZE));
+//MAPPER_USE_BATTERY;
 
 // 32kb of chr-ram should be fine
-MAPPER_CHR_ROM_KB(0);
-MAPPER_CHR_RAM_KB(32);
+//MAPPER_CHR_ROM_KB(0);
+//MAPPER_CHR_RAM_KB(STR(SE_CHARACTER_RAM_SIZE));
 
 // four screens of characters
 //MAPPER_USE_4_SCREEN_NAMETABLE;
 
 // multiregion
-INES_TIMING_MULTIREGION;
+//INES_TIMING_MULTIREGION;
 
 __asm__ (
+    "__prg_rom_size = "STR(SE_PROGRAM_ROM_SIZE)" \n"
+    ".global __prg_rom_size \n"
+    "__chr_rom_size = 0 \n"
+    ".global __chr_rom_size \n"
+    "__chr_ram_size = "STR(SE_CHARACTER_RAM_SIZE)" \n"
+    ".global __chr_ram_size \n"
+    "__prg_nvram_size = "STR(SE_WORK_RAM_SIZE)" \n"
+    ".global __prg_nvram_size \n"
+    "__battery = 1 \n"
+    ".global __battery \n"
+
+
+
+
+
     "__four_screen = 1 \n"
     ".global __four_screen \n"
     // Expansion Port Sound Module
@@ -48,38 +91,7 @@ __attribute__((leaf)) __asm__(
         "bne 1b \n"
 
     // end of clearRAM
+    "lda #$c0\n"
+    "sta $4017\n" // disable apu frame counter irq
 
-    /*
-    ".section .init.280,\"ax\",@progbits \n"
-        "lda #0 \n"
-        "sta __rc2 \n"
-        "sta __rc3 \n"
-        "jsr set_vram_buffer \n"
-
-    ".section .init.300,\"ax\",@progbits \n"
-    
-        // make sure the irq doesn't trigger itself
-        "lda #255 \n"
-        "sta irq_table+0 \n"
-        "sta irq_table+6 \n"
-
-        "lda #$37 \n"
-        "jsr set_prg_a000 \n"
-
-        "lda #$01 \n"
-        "ldx #$00 \n"
-        "ldy #$a0 \n"
-        "jsr famistudio_init \n"
-    */
-
-        "lda #$c0\n"
-        "sta $4017\n" // disable apu frame counter irq
-
-/*
-        "ldx #$00 \n"
-        "tax \n"
-        "dex \n"
-        "ldy #$a0 \n"
-        "jsr famistudio_sfx_init \n"
-*/
 );

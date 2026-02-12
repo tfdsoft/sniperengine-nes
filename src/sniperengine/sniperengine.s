@@ -98,6 +98,7 @@ se_irq_table_position:  .res 1
 ;; init
 jmp se_init
 
+
 ;; mmc3 functions
 jmp set_prg_a000
 jmp set_prg_c000
@@ -105,10 +106,11 @@ jmp banked_call_a000
 jmp set_chr_bank
 jmp jsrfar
 
+
 ;; vram functions
 .align 16
-jmp se_vram_donut_decompress
 jmp se_vram_unrle
+jmp se_vram_donut_decompress
 
 
 ;; ppu functions
@@ -121,20 +123,26 @@ jmp se_set_palette_background
 jmp se_set_palette_sprites
 jmp se_set_palette_all
 jmp se_set_palette_color
+
 jmp se_set_palette_brightness_background
 jmp se_set_palette_brightness_sprites
 jmp se_set_palette_brightness_all
+
 jmp se_fade_palette_to
 jmp se_clear_palette
 
+
+;; oam stuff
 jmp se_clear_sprites
 jmp se_draw_sprite
 jmp se_draw_metasprite
 
+
 ;; vram buffer
 .align 16
-jmp se_set_vram_update
+;jmp se_set_vram_update  ; not needed
 jmp se_set_vram_buffer
+
 jmp se_one_vram_buffer
 jmp se_string_vram_buffer
 
@@ -143,6 +151,15 @@ jmp se_string_vram_buffer
 .align 16
 jmp se_memory_fill
 jmp se_memory_copy
+
+;; music stuff
+.align 16
+.import se_music_play,se_sfx_play,se_music_update
+jmp se_music_play   
+jmp se_sfx_play 
+jmp se_music_update 
+jmp famistudio_music_stop
+jmp famistudio_music_pause
 
 ;;  
 ;;  IDENTITY TABLE
@@ -1063,12 +1080,12 @@ PPU_DATA = $2007
 
 .export se_clear_sprites
 .proc se_clear_sprites
-    .import OAM_BUF
+    .import sprite_buffer
     ldx #0
     stx se_sprite_id
     lda #$ff
     @loop:
-        sta OAM_BUF,x
+        sta sprite_buffer,x
         inx
         inx
         inx
@@ -1079,22 +1096,22 @@ PPU_DATA = $2007
 
 .export se_draw_sprite
 .proc se_draw_sprite
-    .import OAM_BUF
+    .import sprite_buffer
     ;   A:  x
     ;   X:  y
     ;__rc2: tile
     ;__rc3: attributes
     ldy se_sprite_id
-    sta OAM_BUF+3,y
+    sta sprite_buffer+3,y
 
     txa
-    sta OAM_BUF+0,y
+    sta sprite_buffer+0,y
 
     lda __rc2
-    sta OAM_BUF+1,y 
+    sta sprite_buffer+1,y 
 
     lda __rc3
-    sta OAM_BUF+2,y 
+    sta sprite_buffer+2,y 
 
     tya
     clc
@@ -1105,7 +1122,7 @@ PPU_DATA = $2007
 
 .export se_draw_metasprite
 .proc se_draw_metasprite
-    .import OAM_BUF
+    .import sprite_buffer
     ;   A:  x
     ;   X:  y
     ;__rc2: pointer (lo)
@@ -1121,18 +1138,18 @@ PPU_DATA = $2007
         iny
         clc
         adc __rc4
-        sta OAM_BUF+3,x
+        sta sprite_buffer+3,x
         lda (__rc2),y		;y offset
         iny
         clc
         adc __rc5
-        sta OAM_BUF+0,x
+        sta sprite_buffer+0,x
         lda (__rc2),y		;tile
         iny
-        sta OAM_BUF+1,x
+        sta sprite_buffer+1,x
         lda (__rc2),y		;attribute
         iny
-        sta OAM_BUF+2,x
+        sta sprite_buffer+2,x
         inx
         inx
         inx
@@ -1929,27 +1946,27 @@ se_run_da_irq:
 .proc irq
     sta mmc3_IRQ_DISABLE
     pha
-    
+    txa
+    pha
     jsr se_run_da_irq
 
-    tya
-    pha
+    
     
     ; prime irq for the next time it fires
-    ldy se_irq_table_position
+    ldx se_irq_table_position
 
-    lda se_irq_table + 0, y
+    lda se_irq_table + 0, x
     sta mmc3_IRQ_LATCH
     sta mmc3_IRQ_RELOAD
     sta mmc3_IRQ_ENABLE
     
-    lda se_irq_table + 1, y 
+    lda se_irq_table + 1, x
     sta se_irq_ptr + 0
-    lda se_irq_table + 2, y 
+    lda se_irq_table + 2, x
     sta se_irq_ptr + 1
 
     pla
-    tay
+    tax
     pla
     
     rti
@@ -2046,7 +2063,7 @@ se_run_da_irq:
     @exit:
     rts                             ; 40
     @exit_eof_sample:
-    jmp se_sample_eof
+    jmp se_sample_eof               ; 43
 
     .reloc
 .endproc

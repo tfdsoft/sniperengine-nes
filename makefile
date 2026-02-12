@@ -12,7 +12,12 @@ define mkdir
 mkdir $(subst /,\\,$(1))
 endef
 
+define generate_chr
+./generate_chr.bat
+endef
+
 PYTHON := python
+
 else ifeq ($(OS),MSDOS)
 # MS-DOS
 # add "set OS=MSDOS" to autoexec
@@ -28,8 +33,13 @@ define mkdir
 mkdir $(subst /,\\,$(1))
 endef
 
+define generate_chr
+./generate_chr.bat
+endef
+
 PYTHON := python
 DIRSEP := \\
+
 else
 # Ubuntu/Debian
 CC = mos-nes-mmc3-clang
@@ -41,6 +51,10 @@ endef
 
 define mkdir
 mkdir -p $(1)
+endef
+
+define generate_chr
+./generate_chr.sh
 endef
 
 PYTHON := python3
@@ -112,8 +126,10 @@ $(TMPDIR)/music.o: src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/music_bank*
 #	compile all of the music assets into one giant object file
 	$(CA65) src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/music_data_header.s -o $@
 
-$(TMPDIR)/asm.o: src/funny_custom_routines.s
-	$(CA65) src/funny_custom_routines.s -o $@
+
+# custom assembly code (not to be put in .prg_rom_fixed_lo)
+$(TMPDIR)/asm.o: src/*.s
+	$(CC) -c src/*.s -o $@
 
 #$(TMPDIR)/assets.o: src/chr/dnt/*.bin src/assets.c src/assets.h
 #	#$(CC) -c src/assets.c $(CFLAGS) -o $@
@@ -122,6 +138,7 @@ $(TMPDIR)/sniperengine.o: src/sniperengine/sniperengine.s
 	$(CA65) src/sniperengine/sniperengine.s -o $@
 
 $(OUTDIR)/$(NAME).nes: $(OUTDIR) $(TMPDIR)/sniperengine.o $(TMPDIR)/music.o $(TMPDIR)/sfx.o $(TMPDIR)/asm.o src/*.h src/*.c src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/*.h $(CFG)
+	$(call generate_chr)
 	$(CC) src/main.c $(TMPDIR)/*.o $(call cc65IncDir,src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)) $(CFLAGS) $(LDFLAGS) -o $@
 
 
