@@ -9,7 +9,7 @@ banked(state_startup_bank.data) __attribute__((retain)) const u8 chr_font_pusab[
 };
 
 banked(state_startup_bank.data) const u8 pal_startup[] = {
-    0x0f, 0x00, 0x10, 0x20,
+    0x20, 0x10, 0x00, 0x0f,
     0x0f, 0x01, 0x11, 0x21,
     0x0f, 0x02, 0x12, 0x22,
     0x0f, 0x03, 0x13, 0x23,
@@ -74,7 +74,7 @@ banked(state_startup_bank.func) void state_startup(){
         
     }
 
-    se_fade_palette_to(4,0);
+    se_fade_palette_to(4,8);
     se_turn_off_rendering();
 
     /*
@@ -114,16 +114,62 @@ banked(state_startup_bank.func) void thegreet_message(){
     se_string_vram_buffer("WELCOME TO SNIPERENGINE.", nametable_address_A(4,14));
 
     se_post_nmi_ptr = se_music_update;
+
+    //se_memory_copy((void*)0xd0,(void*)funny_pcm_routine,48);
+    
+    // play sample
+    //se_irq_table[0] = 1;    // playback rate
+    //se_irq_table[1] = 0xd0;
+    //se_irq_table[2] = 0x00;
+    //(*(u8*)0x00d1) = 0x00;
+    //(*(u8*)0x00d2) = 0xc0;
+    //se_sample_in_progress = 1;
+    //set_prg_c000(1);
+
+    
     se_music_play(0);
 
     se_set_palette_brightness_all(4);
     se_turn_on_rendering();
 
+
+    __asm__("cli");
+
     while(1){
         se_wait_vsync();
 
+        se_one_vram_buffer(
+            (0x30 + (__prg_8000 >> 4)),
+            nametable_address_A(2,2)
+        );
+        se_one_vram_buffer(
+            (0x30 + (__prg_8000 & 15)),
+            nametable_address_A(3,2)
+        );
+
+
+        for (char i=0; i<8; i++)
+        se_one_vram_buffer(
+            0x30 + ((joypad1.hold >> i) & 1),
+            nametable_address_A((6+i),2)
+        );
+
+        if(joypad1.press_a) {
+            se_play_sample(0xc000, 1, 1);
+        }
         if(joypad1.press_b) {
             break;
         }
     }
 }
+
+
+file(samples_0, 1) = {
+    #embed "./samples/geometryDash0.pcm"
+};
+file(samples_1, 2) = {
+    #embed "./samples/geometryDash1.pcm"
+};
+file(samples_2, 3) = {
+    #embed "./samples/geometryDash2.pcm"
+};

@@ -53,11 +53,14 @@ se_post_nmi_ptr:    .res 2
 .export se_post_nmi_ptr
 se_irq_ptr:         .res 2
 .export se_irq_ptr
+se_sample_in_progress:  .res 1
+.export se_sample_in_progress
 
 ;se_rle_pointer:     .res 2 ;__rc2 is used instead
 
 .segment "BSS"
 se_frame_count:     .res 1
+.export se_frame_count
 
 se_ppu_mask_var:    .res 1
 se_ppu_ctrl_var:    .res 1
@@ -83,6 +86,7 @@ se_vram_buffer = $100   ;DONUT BUFFER IS ALSO HERE!!!!
 
 se_irq_table:       .res 32
 se_irq_table_position:  .res 1
+.export se_irq_table, se_irq_table_position
 
 
 .segment "_pprg__rom__fixed__lo"
@@ -180,11 +184,11 @@ se_palette_brightness_table:
     
     .byte $00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0a,$0b,$0c,$0d,$0e,$0f ;4
 
-    .byte $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$1a,$1b,$1c,$1d,$1e,$1f ;5
+    .byte $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$1a,$1b,$1c,$1d,$1e,$00 ;5
 
-    .byte $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$2a,$2b,$2c,$2d,$2e,$2f ;6
+    .byte $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$2a,$2b,$2c,$2d,$2e,$10 ;6
 
-    .byte $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$3a,$3b,$3c,$3d,$3f,$3f ;7
+    .byte $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$3a,$3b,$3c,$3d,$3f,$20 ;7
 
     .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30 ;8
     .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
@@ -205,6 +209,14 @@ se_palette_brightness_table:
     ldx #>nofunction
     sta se_post_nmi_ptr + 0
     stx se_post_nmi_ptr + 1
+    sta se_irq_ptr + 0
+    stx se_irq_ptr + 1
+    sta se_irq_table + 1
+    stx se_irq_table + 2
+    dec se_irq_table + 0
+
+    
+    
 
     ; disable apu frame counter irq
     lda #$c0
@@ -1781,10 +1793,26 @@ MouseBoundsMax:
             stx $2005
             lda se_ppu_ctrl_var
             sta $2000
-            
-            
 
         @skip_vram_updates:
+
+        ; disable irq while we update it
+        lda #0
+        sta se_irq_table_position
+        sta mmc3_IRQ_DISABLE
+
+        ; get new values for this frame
+        lda se_irq_table+0  ; first reload value
+        ldx se_irq_table+1  ; first pointer (lo)
+        ldy se_irq_table+2  ; first pointer (hi)
+
+        ; prime irq pointer and reload registers
+        stx se_irq_ptr + 0
+        sty se_irq_ptr + 1
+        sta mmc3_IRQ_LATCH
+        sta mmc3_IRQ_RELOAD
+        sta mmc3_IRQ_ENABLE
+
         lda se_ppu_mask_var
         sta $2001
 
@@ -1881,7 +1909,7 @@ MouseBoundsMax:
     pla
     rti
     
-@post_nmi:
+    @post_nmi:
     jmp (se_post_nmi_ptr)
 .endproc
 
@@ -1899,25 +1927,129 @@ se_run_da_irq:
 
 .export irq
 .proc irq
+    sta mmc3_IRQ_DISABLE
+    pha
+    
     jsr se_run_da_irq
-    pha
-    txa
-    pha
 
+    tya
+    pha
+    
     ; prime irq for the next time it fires
-    ldx se_irq_table_position
+    ldy se_irq_table_position
 
-    lda se_irq_table+1,x 
-    sta se_irq_ptr+0
-    lda se_irq_table+2,x 
-    sta se_irq_ptr+1
+    lda se_irq_table + 0, y
+    sta mmc3_IRQ_LATCH
+    sta mmc3_IRQ_RELOAD
+    sta mmc3_IRQ_ENABLE
+    
+    lda se_irq_table + 1, y 
+    sta se_irq_ptr + 0
+    lda se_irq_table + 2, y 
+    sta se_irq_ptr + 1
 
     pla
-    tax
+    tay
     pla
+    
     rti
 .endproc
 
+
+.export se_play_sample
+.proc se_play_sample
+    php
+    sei
+    sta __prg_c000
+    txa
+    pha
+
+    lda #$ad    ; opcode for LDA abs
+    sta $d0
+
+    ; copy to this location
+    lda #$d3
+    ldx #0
+    sta __rc2
+    stx __rc3
+
+    sec
+    sbc #3
+    sta se_irq_table+1
+    stx se_irq_table+2
+
+    dex
+    stx se_irq_table+0
+    
+    ; from this location
+    lda #<funny_pcm_routine+3
+    ldx #>funny_pcm_routine
+    sta __rc4
+    stx __rc5
+
+    ; with this length
+    lda #45
+    ldx #0
+    jsr se_memory_copy
+
+
+    ; set bank
+    lda #%00000110                  ; 25
+    ora __bank_select_hi            ; 27
+    sta $8000                       ; 30
+    lda __prg_c000                  ; 32
+    sta $8001                       ; 35
+
+    ; get playback rate
+    pla
+    tax
+    stx se_irq_table+0
+    inc se_sample_in_progress
+
+    plp
+    rts
+.endproc
+
+.proc se_sample_eof
+    lda #0
+    sta se_sample_in_progress
+    lda #255
+    sta se_irq_table+0
+    rts
+.endproc
+
+.proc funny_pcm_routine
+    .org $00d0  ; 60 bytes to work with
+
+    @load_instruction: lda $c000    ; 3
+    bmi @exit_eof_sample            ; 5
+    sta $4011                       ; 8
+    inc @load_instruction + 1       ; 10
+    beq @inc_high_byte              ; 12
+    rts                             ; 13
+
+    @inc_high_byte:
+    inc @load_instruction + 2       ; 15
+    lda @load_instruction + 2       ; 17
+    cmp #$e0                        ; 19
+    bne @exit                       ; 21
+
+    inc __prg_c000                  ; 23
+
+    lda #%00000110                  ; 25
+    ora __bank_select_hi            ; 27
+    sta $8000                       ; 30
+    lda __prg_c000                  ; 32
+    sta $8001                       ; 35
+    lda #$c0                        ; 37
+    sta @load_instruction + 2       ; 39
+    @exit:
+    rts                             ; 40
+    @exit_eof_sample:
+    jmp se_sample_eof
+
+    .reloc
+.endproc
 
 ;.align 128
 .include "famistudio_ca65.s"

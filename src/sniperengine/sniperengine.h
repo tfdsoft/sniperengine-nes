@@ -24,11 +24,15 @@ __attribute__((section(".aligned"),retain)) struct OAM_BUF {
     unsigned char x;
 } OAM_BUF[64];
 
-
+extern u8 se_frame_count;
 extern u8 se_ppu_ctrl_var, se_ppu_mask_var;
 extern u8 se_palette_update;
+extern u8 __prg_8000, __prg_a000;
 extern void* se_post_nmi_ptr;
 extern void* se_irq_ptr;
+extern u8 se_sample_in_progress;
+extern u8 se_irq_table[32];
+
 struct pad {
     union {
         unsigned char hold;
@@ -119,7 +123,9 @@ __attribute__((leaf)) void se_fade_palette_to(u8 from, u8 to);
 
 __attribute__((leaf)) void se_clear_sprites();
 
-
+__attribute__((leaf)) void se_one_vram_buffer(
+	const char data, const u16 ppu_addr
+);
 __attribute__((leaf)) void se_string_vram_buffer(
 	const char *data, const u16 ppu_addr
 );
@@ -145,8 +151,26 @@ __attribute__((leaf)) void se_memory_copy(void* to, void* from, u16 length);
 __asm__ (
     ".section .prg_rom_fixed_lo.famistudio_dpcm_bank_callback \n"
     "famistudio_dpcm_bank_callback: \n"
+    "pha \n"
+    "lda "STR(se_sample_in_progress)" \n"
+    "beq 1f \n"
+    "pla \n"
+    "rts \n"
+    "1: \n"
+    "pla \n"
     "clc \n"
     "adc #"STR(dpcm_bank_0)" \n"
     "jmp set_prg_8000 \n"
     ".globl famistudio_dpcm_bank_callback \n"
 );
+
+
+#define se_play_sample(ptr, bank, rate) __asm__( \
+    "lda #<"STR(ptr)" \n" \
+    "ldx #>"STR(ptr)" \n" \
+    "sta $d1 \n" \
+    "stx $d2 \n" \
+    "lda #"STR(bank)" \n" \
+    "ldx #"STR(rate)" \n" \
+    "jsr se_play_sample \n" \
+)

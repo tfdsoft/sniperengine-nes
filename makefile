@@ -112,8 +112,8 @@ $(TMPDIR)/music.o: src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/music_bank*
 #	compile all of the music assets into one giant object file
 	$(CA65) src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/music_data_header.s -o $@
 
-#$(TMPDIR)/donut.o: src/chr/*.s
-#	$(CA65) src/chr/donut.s -o $@
+$(TMPDIR)/asm.o: src/funny_custom_routines.s
+	$(CA65) src/funny_custom_routines.s -o $@
 
 #$(TMPDIR)/assets.o: src/chr/dnt/*.bin src/assets.c src/assets.h
 #	#$(CC) -c src/assets.c $(CFLAGS) -o $@
@@ -121,7 +121,7 @@ $(TMPDIR)/music.o: src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/music_bank*
 $(TMPDIR)/sniperengine.o: src/sniperengine/sniperengine.s
 	$(CA65) src/sniperengine/sniperengine.s -o $@
 
-$(OUTDIR)/$(NAME).nes: $(OUTDIR) $(TMPDIR)/sniperengine.o $(TMPDIR)/music.o $(TMPDIR)/sfx.o  src/*.h src/*.c src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/*.h $(CFG)
+$(OUTDIR)/$(NAME).nes: $(OUTDIR) $(TMPDIR)/sniperengine.o $(TMPDIR)/music.o $(TMPDIR)/sfx.o $(TMPDIR)/asm.o src/*.h src/*.c src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/*.h $(CFG)
 	$(CC) src/main.c $(TMPDIR)/*.o $(call cc65IncDir,src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)) $(CFLAGS) $(LDFLAGS) -o $@
 
 

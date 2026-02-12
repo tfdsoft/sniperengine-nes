@@ -21,13 +21,14 @@ banked(fixed.main) int main(void) {
     famistudio_init(1,0xa000);
 
     se_post_nmi_ptr = se_music_update;
-    se_irq_ptr = nofunction;
     
 
     se_clear_palette();
 
     
+
     while(1){
+        __asm__("sei");
         se_wait_vsync();
         se_turn_off_rendering();
         se_clear_sprites();
