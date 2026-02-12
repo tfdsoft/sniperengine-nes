@@ -12,10 +12,6 @@ define mkdir
 mkdir $(subst /,\\,$(1))
 endef
 
-define generate_chr
-./generate_chr.bat
-endef
-
 PYTHON := python
 
 else ifeq ($(OS),MSDOS)
@@ -33,10 +29,6 @@ define mkdir
 mkdir $(subst /,\\,$(1))
 endef
 
-define generate_chr
-./generate_chr.bat
-endef
-
 PYTHON := python
 DIRSEP := \\
 
@@ -51,10 +43,6 @@ endef
 
 define mkdir
 mkdir -p $(1)
-endef
-
-define generate_chr
-./generate_chr.sh
 endef
 
 PYTHON := python3
@@ -138,10 +126,8 @@ $(TMPDIR)/sniperengine.o: src/sniperengine/sniperengine.s
 	$(CA65) src/sniperengine/sniperengine.s -o $@
 
 $(OUTDIR)/$(NAME).nes: $(OUTDIR) $(TMPDIR)/sniperengine.o $(TMPDIR)/music.o $(TMPDIR)/sfx.o $(TMPDIR)/asm.o src/*.h src/*.c src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/*.h $(CFG)
-	$(call generate_chr)
+	python3 src/chr/donut.py src/chr/uncompressed/ src/chr/dnt -f
 	$(CC) src/main.c $(TMPDIR)/*.o $(call cc65IncDir,src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)) $(CFLAGS) $(LDFLAGS) -o $@
-
-
 
 
 clean:
