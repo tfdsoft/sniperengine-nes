@@ -21,6 +21,7 @@ banked(fixed.main) int main(void) {
     famistudio_init(1,0xa000);
 
     se_post_nmi_ptr = se_music_update;
+    se_irq_ptr = nofunction;
     
 
     se_clear_palette();
@@ -33,10 +34,10 @@ banked(fixed.main) int main(void) {
 
         switch (gamestate){
             default:
-                banked_call_a000(60,state_startup);
+                jsrfar_noargs(60,state_startup);
                 break;
             case 0xff:
-                banked_call_a000(60,thegreet_message);
+                jsrfar_noargs(60,thegreet_message);
                 break;
         }
         se_post_nmi_ptr = nofunction;

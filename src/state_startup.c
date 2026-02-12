@@ -114,12 +114,16 @@ banked(state_startup_bank.func) void thegreet_message(){
     se_string_vram_buffer("WELCOME TO SNIPERENGINE.", nametable_address_A(4,14));
 
     se_post_nmi_ptr = se_music_update;
-    se_music_play(1);
+    se_music_play(0);
 
     se_set_palette_brightness_all(4);
     se_turn_on_rendering();
 
     while(1){
         se_wait_vsync();
+
+        if(joypad1.press_b) {
+            break;
+        }
     }
 }

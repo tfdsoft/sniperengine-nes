@@ -28,7 +28,65 @@ __attribute__((section(".aligned"),retain)) struct OAM_BUF {
 extern u8 se_ppu_ctrl_var, se_ppu_mask_var;
 extern u8 se_palette_update;
 extern void* se_post_nmi_ptr;
-
+extern void* se_irq_ptr;
+struct pad {
+    union {
+        unsigned char hold;
+        struct {
+            unsigned char right : 1;
+            unsigned char left : 1;
+            unsigned char down : 1;
+            unsigned char up : 1;
+            #if __VS_SYSTEM
+            unsigned char select : 1;
+            unsigned char start : 1;
+            #else
+            unsigned char start : 1;
+            unsigned char select : 1;
+            #endif
+            unsigned char b : 1;
+            unsigned char a : 1;
+        };
+    };
+    union {
+        unsigned char press;
+        struct {
+            unsigned char press_right : 1;
+            unsigned char press_left : 1;
+            unsigned char press_down : 1;
+            unsigned char press_up : 1;
+            #if __VS_SYSTEM
+            unsigned char press_select : 1;
+            unsigned char press_start : 1;
+            #else
+            unsigned char press_start : 1;
+            unsigned char press_select : 1;
+            #endif
+            unsigned char press_b : 1;
+            unsigned char press_a : 1;
+        };
+    };
+    union {
+        unsigned char release;
+        struct {
+            unsigned char release_right : 1;
+            unsigned char release_left : 1;
+            unsigned char release_down : 1;
+            unsigned char release_up : 1;
+            #if __VS_SYSTEM
+            unsigned char release_select : 1;
+            unsigned char release_start : 1;
+            #else
+            unsigned char release_start : 1;
+            unsigned char release_select : 1;
+            #endif
+            unsigned char release_b : 1;
+            unsigned char release_a : 1;
+        };
+    };
+};
+extern struct pad joypad1;
+extern struct pad joypad2;
 
 __attribute__((leaf)) void se_init();
 __attribute__((leaf)) void nofunction();
@@ -37,6 +95,7 @@ __attribute__((leaf)) void banked_call_a000(u8 bank, void(*method)(void));
 __attribute__((leaf)) void set_prg_c000(u8 bank);
 __attribute__((leaf)) void set_prg_a000(u8 bank);
 __attribute__((leaf)) void set_chr_bank(u8 window, u8 bank);
+#define jsrfar_noargs(bank, func) __asm__("jsr jsrfar \n .word "STR(func)"\n .byte "STR(bank)" \n")
 
 #define se_vram_address(address) __asm__("ldx #>"STR(address)"\n stx $2006 \n ldx #<"STR(address)"\n stx $2006")
 __attribute__((leaf)) void se_vram_unrle(const void* data);

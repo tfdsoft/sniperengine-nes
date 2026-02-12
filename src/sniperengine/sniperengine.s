@@ -25,6 +25,10 @@ __rc19 = $13
 __rc20 = $14
 __rc21 = $15
 
+mmc3_IRQ_LATCH   = $c000
+mmc3_IRQ_RELOAD  = $c001
+mmc3_IRQ_DISABLE = $e000
+mmc3_IRQ_ENABLE  = $e001
 
 
 .macpack longbranch
@@ -47,6 +51,8 @@ se_no_mouse:        .res 1
 
 se_post_nmi_ptr:    .res 2
 .export se_post_nmi_ptr
+se_irq_ptr:         .res 2
+.export se_irq_ptr
 
 ;se_rle_pointer:     .res 2 ;__rc2 is used instead
 
@@ -75,6 +81,10 @@ se_music_bank:      .res 1
 se_vram_buffer = $100   ;DONUT BUFFER IS ALSO HERE!!!!
 
 
+se_irq_table:       .res 32
+se_irq_table_position:  .res 1
+
+
 .segment "_pprg__rom__fixed__lo"
 ;;
 ;; API, USEFUL FOR ROM HACKING
@@ -89,15 +99,16 @@ jmp set_prg_a000
 jmp set_prg_c000
 jmp banked_call_a000
 jmp set_chr_bank
+jmp jsrfar
 
 ;; vram functions
-.align 32
+.align 16
 jmp se_vram_donut_decompress
 jmp se_vram_unrle
 
 
 ;; ppu functions
-.align 32
+.align 16
 jmp se_wait_vsync
 jmp se_turn_off_rendering
 jmp se_turn_on_rendering
@@ -117,7 +128,7 @@ jmp se_draw_sprite
 jmp se_draw_metasprite
 
 ;; vram buffer
-.align 32
+.align 16
 jmp se_set_vram_update
 jmp se_set_vram_buffer
 jmp se_one_vram_buffer
@@ -125,7 +136,7 @@ jmp se_string_vram_buffer
 
 
 ;; memory stuff
-.align 32
+.align 16
 jmp se_memory_fill
 jmp se_memory_copy
 
@@ -248,7 +259,6 @@ se_palette_brightness_table:
 ;;
 .export set_prg_c000
 .proc set_prg_c000
-set_prg_c000:
 	sta __prg_c000
 	tax
 	lda #%00000110
@@ -258,7 +268,6 @@ set_prg_c000:
 
 .export set_prg_a000
 .proc set_prg_a000
-set_prg_a000:
 	sta __prg_a000
 	tax
 	lda #%00000111
@@ -279,8 +288,7 @@ set_prg_a000:
 
 .export banked_call_a000
 .proc banked_call_a000
-banked_call_a000:
-.import __call_indir
+    .import __call_indir
 	tay
 	lda __prg_a000
 	pha
@@ -298,7 +306,6 @@ banked_call_a000:
 
 .export set_chr_bank
 .proc set_chr_bank
-set_chr_bank:
 	ora __bank_select_hi
 	sta $8000
 	stx $8001
@@ -310,6 +317,74 @@ set_chr_bank:
 .proc set_chr_bank_retry
 	ora __bank_select_hi
 	jmp __set_reg_retry
+.endproc
+
+.export jsrfar
+.proc jsrfar
+    .import __call_indir
+
+    ; adapted from commander x16 rom.
+    ; basically:
+    ;   jsr jsrfar
+    ;   .word address
+    ;   .bank bank
+
+    php ; reserve 1 byte
+    php ; save registers and status
+
+    clc
+    jsrfare:    ; emulation mode
+        pha
+        txa
+        pha
+        tya
+        pha
+
+        tsx
+        lda $106,x 
+        sta __rc16
+        
+        adc #3
+        sta $106,x 
+        lda $107,x 
+        sta __rc17
+
+        ldy #1
+        lda (__rc16),y 
+        sta __rc18
+        iny
+        lda (__rc16),y 
+        sta __rc19
+
+        lda __prg_a000
+        sta $105,x 
+        iny 
+        lda (__rc16),y 
+        jsr set_prg_a000
+        pla
+        tay
+        pla
+        tax
+        pla
+        plp
+        jsr __call_indir
+        php
+        pha
+        txa
+        pha
+        tsx
+        lda $104,x 
+        jsr set_prg_a000
+        tsx
+        lda $103,x 
+        sta $104,x 
+        pla
+        tax
+        pla
+        plp
+        plp
+        rts
+
 .endproc
 
 
@@ -664,8 +739,9 @@ PPU_DATA = $2007
 .endproc
 
 
-
+;;
 ;; END OF DONUT CODE
+;;
 
 
 ;; see the header
@@ -787,7 +863,7 @@ PPU_DATA = $2007
     lda se_ppu_mask_var
     and #%11100111
     sta se_ppu_mask_var
-    rts
+    jmp se_wait_vsync
 .endproc
 
 .export se_turn_on_rendering
@@ -795,7 +871,7 @@ PPU_DATA = $2007
     lda se_ppu_mask_var
     ora #%00011000
     sta se_ppu_mask_var
-    rts
+    jmp se_wait_vsync
 .endproc
 
 
@@ -1402,6 +1478,8 @@ MouseBoundsMax:
 
 .export se_safe_controller_polling
 .proc se_safe_controller_polling
+    .export joypad1
+    .export joypad2
     joypad2 = se_joypad+1
     joypad1 = se_joypad+4
     controller_port_1 = $4016
@@ -1449,8 +1527,8 @@ MouseBoundsMax:
     stx controller_port_1
 
     ;INITIATE THE DMA!
-    iny
-    sty $4014
+    lda #2
+    sta $4014
 
     ; poll
     @poll_mouse:
@@ -1717,6 +1795,9 @@ MouseBoundsMax:
 
     inc se_frame_count
 
+    ;reset irq
+
+
     lda __rc2
     pha
     lda __rc3
@@ -1807,6 +1888,35 @@ MouseBoundsMax:
 
 
 
+
+
+;;
+;;  IRQ STUFF
+;;  need interrupts? this has you covered.
+;;
+se_run_da_irq:
+    jmp (se_irq_ptr)
+
+.export irq
+.proc irq
+    jsr se_run_da_irq
+    pha
+    txa
+    pha
+
+    ; prime irq for the next time it fires
+    ldx se_irq_table_position
+
+    lda se_irq_table+1,x 
+    sta se_irq_ptr+0
+    lda se_irq_table+2,x 
+    sta se_irq_ptr+1
+
+    pla
+    tax
+    pla
+    rti
+.endproc
 
 
 ;.align 128
