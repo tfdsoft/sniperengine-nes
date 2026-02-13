@@ -1,21 +1,11 @@
-#define state_startup_bank 60
-
-// some CHR data
-banked(state_startup_bank.data) __attribute__((retain)) const u8 chr_startup[] = {
-    #embed "./chr/dnt/Menu_TFDLogo.bin"
-};
-banked(state_startup_bank.data) __attribute__((retain)) const u8 chr_font_pusab[] = {
-    #embed "./chr/dnt/Menu_Font_Pusab.bin"
-};
-
-banked(state_startup_bank.data) const u8 pal_startup[] = {
+banked(startup_bank.data) const u8 pal_startup[] = {
     0x20, 0x10, 0x00, 0x0f,
     0x0f, 0x01, 0x11, 0x21,
     0x0f, 0x02, 0x12, 0x22,
     0x0f, 0x03, 0x13, 0x23,
 };
 
-banked(state_startup_bank.data) const unsigned char nt_startup[] = {
+banked(startup_bank.data) const unsigned char nt_startup[] = {
     0x01,0x00,0x01,0xfe,0x00,0x01,0x45,0x80,0x81,0x00,0x01,0x12,0xc0,0x00,0x01,0x08,
 0x82,0x83,0x84,0x85,0x00,0x01,0x0d,0xc1,0x00,0xc2,0xc3,0xc4,0x00,0x01,0x07,0x86,
 0x87,0x88,0x89,0x00,0x01,0x09,0xc5,0xc6,0xc7,0xc8,0xc9,0xca,0x00,0xcb,0xcc,0xcd,
@@ -29,11 +19,11 @@ banked(state_startup_bank.data) const unsigned char nt_startup[] = {
 0x01,0xfe,0x00,0x01,0xc7,0x01,0x00
 };
 
-banked(state_startup_bank.func) void state_startup(){
+banked(startup_bank.func) void state_startup(){
     se_vram_address(0);
     se_memory_fill((void*)0x2007,0,256);
-    se_vram_donut_decompress(chr_font_pusab, state_startup_bank);
-    se_vram_donut_decompress(chr_startup, state_startup_bank);
+    se_vram_donut_decompress(chr_menu_font_pusab, startup_bank);
+    se_vram_donut_decompress(chr_menu_tfdlogo, startup_bank);
 
     se_vram_address(0x2000);
     se_vram_unrle(nt_startup);
@@ -106,7 +96,7 @@ banked(state_startup_bank.func) void state_startup(){
 
 
 
-banked(state_startup_bank.data) const u8 greet_irq_table[] = {
+banked(startup_bank.data) const u8 greet_irq_table[] = {
     110,// scanlines to wait
     0,      // lo and hi bytes
     0,      // of function address
@@ -128,7 +118,7 @@ banked(state_startup_bank.data) const u8 greet_irq_table[] = {
     0
 };
 
-banked(state_startup_bank.func) void thegreet_message(){
+banked(startup_bank.func) void thegreet_message(){
 
     u16 scroll = 0;
 
@@ -138,22 +128,15 @@ banked(state_startup_bank.func) void thegreet_message(){
 
     se_post_nmi_ptr = se_music_update;
 
+
     se_memory_copy((void*)se_irq_table,(void*)greet_irq_table,sizeof(greet_irq_table));
     
-    // play sample
-    //se_irq_table[0] = 1;    // playback rate
-    //se_irq_table[1] = 0xd0;
-    //se_irq_table[2] = 0x00;
-    //(*(u8*)0x00d1) = 0x00;
-    //(*(u8*)0x00d2) = 0xc0;
-    //se_sample_in_progress = 1;
-    //set_prg_c000(1);
-
+    // because C is weird about putting function pointers in
+    // const arrays, i have to manually inject the function
+    // pointers into the IRQ table
     se_write_function_to_irq_table(custom_irq_that_updates_scroll, 1);
     se_write_function_to_irq_table(custom_irq_that_updates_scroll, 8);
     se_write_function_to_irq_table(nofunction, 15);
-
-    
 
     
     se_music_play(0);

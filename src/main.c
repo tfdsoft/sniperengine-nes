@@ -4,6 +4,7 @@
 
 #include "sniperengine/sniperengine.h"
 #include "ines_header.h"
+#include "assets.c"
 #include "ram.h"
 
 #include "./funny_custom_routines.h"

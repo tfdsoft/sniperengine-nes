@@ -112,6 +112,7 @@ __attribute__((leaf)) void se_vram_donut_decompress(const u8 * data, u8 bank);
 
 
 __attribute__((leaf)) void se_wait_vsync();
+__attribute__((leaf)) void se_wait_frames(u8 frames);
 __attribute__((leaf)) void se_turn_off_rendering();
 __attribute__((leaf)) void se_turn_on_rendering();
 

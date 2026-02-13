@@ -116,6 +116,7 @@ jmp se_vram_donut_decompress
 ;; ppu functions
 .align 16
 jmp se_wait_vsync
+jmp se_wait_frames
 jmp se_turn_off_rendering
 jmp se_turn_on_rendering
 
@@ -884,7 +885,15 @@ PPU_DATA = $2007
     rts
 .endproc
 
-
+.export se_wait_frames
+.proc se_wait_frames
+    tax
+    @wait:
+        jsr se_wait_vsync
+        dex
+        bne @wait
+    rts
+.endproc
 ;   enable/disable rendering
 
 .export se_turn_off_rendering
@@ -1009,11 +1018,8 @@ PPU_DATA = $2007
 	jmp @check_equal
 
     @fade_loop:
-        ldx #4
-        :
-        jsr se_wait_vsync ;wait 4 frames
-        dex
-        bne :-
+        lda #2
+        jsr se_wait_frames ;wait 4 frames
 
         lda __rc21 ;from
         cmp __rc20 ;to
