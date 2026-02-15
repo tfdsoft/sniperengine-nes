@@ -2042,7 +2042,7 @@ se_run_da_irq:
 .endproc
 
 .proc funny_pcm_routine
-    .org $00d0  ; 60 bytes to work with
+    .org $00d0  ; 48 bytes to work with
 
     @load_instruction: lda $c000    ; 3
     bmi @exit_eof_sample            ; 5
