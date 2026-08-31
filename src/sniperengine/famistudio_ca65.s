@@ -1,6 +1,6 @@
 ;======================================================================================================================
-; FAMISTUDIO SOUND ENGINE (4.4.1)
-; Copyright (c) 2019-2025 Mathieu Gauthier
+; FAMISTUDIO SOUND ENGINE (4.5.0)
+; Copyright (c) 2019-2026 Mathieu Gauthier
 ;
 ; Copying and distribution of this file, with or without
 ; modification, are permitted in any medium without royalty provided
@@ -82,8 +82,8 @@
 ; like the example below.
 ;======================================================================================================================
 
-.define FAMISTUDIO_CA65_ZP_SEGMENT   ZEROPAGE
-.define FAMISTUDIO_CA65_RAM_SEGMENT  INIT
+.define FAMISTUDIO_CA65_ZP_SEGMENT   _pzp
+.define FAMISTUDIO_CA65_RAM_SEGMENT  _pnoinit
 .define FAMISTUDIO_CA65_CODE_SEGMENT _pprg__rom__fixed__lo
 
 ;======================================================================================================================
@@ -121,14 +121,14 @@
  FAMISTUDIO_EXP_EPSM          = 1
 ; Fine-tune control for enabling specific channels
 ; Default values for the channels are to enable all channels.
-; FAMISTUDIO_EXP_EPSM_SSG_CHN_CNT     = 3
-; FAMISTUDIO_EXP_EPSM_FM_CHN_CNT      = 6
-; FAMISTUDIO_EXP_EPSM_RHYTHM_CHN1_ENABLE = 1
-; FAMISTUDIO_EXP_EPSM_RHYTHM_CHN2_ENABLE = 1
-; FAMISTUDIO_EXP_EPSM_RHYTHM_CHN3_ENABLE = 1
-; FAMISTUDIO_EXP_EPSM_RHYTHM_CHN4_ENABLE = 1
-; FAMISTUDIO_EXP_EPSM_RHYTHM_CHN5_ENABLE = 1
-; FAMISTUDIO_EXP_EPSM_RHYTHM_CHN6_ENABLE = 1
+ FAMISTUDIO_EXP_EPSM_SSG_CHN_CNT     = 3
+ FAMISTUDIO_EXP_EPSM_FM_CHN_CNT      = 6
+ FAMISTUDIO_EXP_EPSM_RHYTHM_CHN1_ENABLE = 0
+ FAMISTUDIO_EXP_EPSM_RHYTHM_CHN2_ENABLE = 0
+ FAMISTUDIO_EXP_EPSM_RHYTHM_CHN3_ENABLE = 0
+ FAMISTUDIO_EXP_EPSM_RHYTHM_CHN4_ENABLE = 0
+ FAMISTUDIO_EXP_EPSM_RHYTHM_CHN5_ENABLE = 0
+ FAMISTUDIO_EXP_EPSM_RHYTHM_CHN6_ENABLE = 0
 
 ;======================================================================================================================
 ; 3) GLOBAL ENGINE CONFIGURATION
@@ -194,7 +194,7 @@ FAMISTUDIO_USE_PITCH_TRACK       = 1
 
 ; Must be enabled if any song uses slide notes. Slide notes allows portamento and slide effects.
 ; More information at: https://famistudio.org/doc/pianoroll/#slide-notes
- FAMISTUDIO_USE_SLIDE_NOTES       = 1
+FAMISTUDIO_USE_SLIDE_NOTES       = 1
 
 ; Must be enabled if any song uses slide notes on the noise channel too. 
 ; More information at: https://famistudio.org/doc/pianoroll/#slide-notes
@@ -202,12 +202,12 @@ FAMISTUDIO_USE_PITCH_TRACK       = 1
 
 ; Must be enabled if any song uses the vibrato speed/depth effect track. 
 ; More information at: https://famistudio.org/doc/pianoroll/#vibrato-depth-speed
-; FAMISTUDIO_USE_VIBRATO           = 1
+FAMISTUDIO_USE_VIBRATO           = 1
 
 ; Must be enabled if any song uses arpeggios (not to be confused with instrument arpeggio envelopes, those are always
 ; supported).
 ; More information at: (TODO)
-; FAMISTUDIO_USE_ARPEGGIO          = 1
+FAMISTUDIO_USE_ARPEGGIO          = 1
 
 ; Must be enabled if any song uses the "Duty Cycle" effect (equivalent of FamiTracker Vxx, also called "Timbre").  
  FAMISTUDIO_USE_DUTYCYCLE_EFFECT  = 1
@@ -215,7 +215,7 @@ FAMISTUDIO_USE_PITCH_TRACK       = 1
 ; Must be enabled if any song uses the DPCM delta counter. Only makes sense if DPCM samples
 ; are enabled (FAMISTUDIO_CFG_DPCM_SUPPORT).
 ; More information at: (TODO)
- FAMISTUDIO_USE_DELTA_COUNTER     = 1
+; FAMISTUDIO_USE_DELTA_COUNTER     = 1
 
 ; Must be enabled if your project uses more than 1 bank of DPCM samples.
 ; When using this, you must implement the "famistudio_dpcm_bank_callback" callback 
@@ -886,6 +886,7 @@ famistudio_vrc6_saw_prev_hi    = famistudio_vrc6_saw_volume
 famistudio_chn_vrc7_prev_hi:      .res 6
 famistudio_chn_vrc7_patch:        .res 6
 famistudio_chn_vrc7_trigger:      .res 6 ; bit 0 = new note triggered, bit 7 = note released.
+famistudio_chn_vrc7_sustain:      .res 1 ; sustain bit overrides release.
 .endif
 .if FAMISTUDIO_EXP_EPSM
 .if FAMISTUDIO_EXP_EPSM_RHYTHM_CNT > 0
@@ -959,7 +960,6 @@ famistudio_dpcm_effect:           .res 1 ; TODO: Not needed if DPCM support is d
 famistudio_pulse1_prev:           .res 1
 famistudio_pulse2_prev:           .res 1
 famistudio_song_speed:            .res 1
-.export famistudio_song_speed
 
 .if FAMISTUDIO_EXP_MMC5
 famistudio_mmc5_pulse1_prev:      .res 1
@@ -1290,9 +1290,9 @@ famistudio_init:
     @music_data_ptr = famistudio_ptr0
 
     stx famistudio_song_list_lo
+    stx @music_data_ptr + 0
     sty famistudio_song_list_hi
-    stx @music_data_ptr+0
-    sty @music_data_ptr+1
+    sty @music_data_ptr + 1
 
 .if FAMISTUDIO_DUAL_SUPPORT
     tax
@@ -2452,8 +2452,18 @@ famistudio_update_vrc7_channel_sound:
     sta FAMISTUDIO_VRC7_REG_SEL
     jsr famistudio_vrc7_wait_reg_select
 
+    lda famistudio_chn_vrc7_sustain
+    bmi @override_stop
     lda famistudio_chn_vrc7_prev_hi, y
-    and #$cf ; Remove trigger + sustain
+    and #$cf
+    bne @apply_cut
+
+@override_stop:
+    lda famistudio_chn_vrc7_prev_hi, y
+    and #$ef
+    ora #$20 ; Set sustain flag to override
+
+@apply_cut:
     sta famistudio_chn_vrc7_prev_hi, y
     sta FAMISTUDIO_VRC7_REG_WRITE
     jsr famistudio_vrc7_wait_reg_write
@@ -2573,7 +2583,7 @@ famistudio_update_vrc7_channel_sound:
 
     txa
     asl
-    ora #$20
+    ora famistudio_chn_vrc7_sustain
     ora @pitch+1
     ora @tmp
     sta famistudio_chn_vrc7_prev_hi, y
@@ -3205,10 +3215,10 @@ update_fm_instrument:
     tay
     ; And then read the pointer to the extended instrument patch data
     lda (@ptr),y
-    sta @ex_patch
+    sta @ex_patch + 0
     iny
     lda (@ptr),y
-    sta @ex_patch+1
+    sta @ex_patch + 1
 
 @fm_channel:
     ldx @chan_idx2
@@ -4996,12 +5006,14 @@ famistudio_set_vrc7_instrument:
     @load_patch:
     ldx @chan_idx
     lda (@ptr),y
+    sta famistudio_chn_vrc7_sustain ; Release override.
+    iny
+    lda (@ptr),y
     sta famistudio_chn_vrc7_patch-FAMISTUDIO_VRC7_CH0_IDX,x
     bne @done
 
     @read_custom_patch:
     ldx #0
-    iny
     iny
     @read_patch_loop:
         stx FAMISTUDIO_VRC7_REG_SEL
@@ -6541,6 +6553,7 @@ famistudio_sfx_sample_play:
 
 sample_play:
 
+    @update_flags = famistudio_r1
     @tmp = famistudio_r3
     @sample_index = famistudio_r3
     @sample_data_ptr = famistudio_ptr1
@@ -6602,6 +6615,8 @@ sample_play:
 @read_dmc_initial_value:
 .endif    
 
+    bit @update_flags
+    bmi @start_dmc
     lda (@sample_data_ptr),y ; Initial DMC counter
     sta FAMISTUDIO_APU_DMC_RAW
 
@@ -7483,22 +7498,22 @@ famistudio_smooth_vibrato_sweep_lookup:
 ; Load the 2 volumes in the lo/hi nibble and fetch.
 
 famistudio_volume_table:
-    .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00
-    .byte $00, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01
-    .byte $00, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $02, $02, $02, $02
-    .byte $00, $01, $01, $01, $01, $01, $01, $01, $02, $02, $02, $02, $02, $03, $03, $03
-    .byte $00, $01, $01, $01, $01, $01, $02, $02, $02, $02, $03, $03, $03, $03, $04, $04
-    .byte $00, $01, $01, $01, $01, $02, $02, $02, $03, $03, $03, $04, $04, $04, $05, $05
-    .byte $00, $01, $01, $01, $02, $02, $02, $03, $03, $04, $04, $04, $05, $05, $06, $06
-    .byte $00, $01, $01, $01, $02, $02, $03, $03, $04, $04, $05, $05, $06, $06, $07, $07
-    .byte $00, $01, $01, $02, $02, $03, $03, $04, $04, $05, $05, $06, $06, $07, $07, $08
-    .byte $00, $01, $01, $02, $02, $03, $04, $04, $05, $05, $06, $07, $07, $08, $08, $09
-    .byte $00, $01, $01, $02, $03, $03, $04, $05, $05, $06, $07, $07, $08, $09, $09, $0a
-    .byte $00, $01, $01, $02, $03, $04, $04, $05, $06, $07, $07, $08, $09, $0a, $0a, $0b
-    .byte $00, $01, $02, $02, $03, $04, $05, $06, $06, $07, $08, $09, $0a, $0a, $0b, $0c
-    .byte $00, $01, $02, $03, $03, $04, $05, $06, $07, $08, $09, $0a, $0a, $0b, $0c, $0d
-    .byte $00, $01, $02, $03, $04, $05, $06, $07, $07, $08, $09, $0a, $0b, $0c, $0d, $0e
-    .byte $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $0a, $0b, $0c, $0d, $0e, $0f
+    .byte $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00 ; 0
+    .byte $00, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01 ; 1
+    .byte $00, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $01, $02, $02, $02, $02 ; 2
+    .byte $00, $01, $01, $01, $01, $01, $01, $01, $02, $02, $02, $02, $02, $03, $03, $03 ; 3
+    .byte $00, $01, $01, $01, $01, $01, $02, $02, $02, $02, $03, $03, $03, $03, $04, $04 ; 4
+    .byte $00, $01, $01, $01, $01, $02, $02, $02, $03, $03, $03, $04, $04, $04, $05, $05 ; 5
+    .byte $00, $01, $01, $01, $02, $02, $02, $03, $03, $04, $04, $04, $05, $05, $06, $06 ; 6
+    .byte $00, $01, $01, $01, $02, $02, $03, $03, $04, $04, $05, $05, $06, $06, $07, $07 ; 7
+    .byte $00, $01, $01, $02, $02, $03, $03, $04, $04, $05, $05, $06, $06, $07, $07, $08 ; 8
+    .byte $00, $01, $01, $02, $02, $03, $04, $04, $05, $05, $06, $07, $07, $08, $08, $09 ; 9
+    .byte $00, $01, $01, $02, $03, $03, $04, $05, $05, $06, $07, $07, $08, $09, $09, $0a ; A
+    .byte $00, $01, $01, $02, $03, $04, $04, $05, $06, $07, $07, $08, $09, $0a, $0a, $0b ; B
+    .byte $00, $01, $02, $02, $03, $04, $05, $06, $06, $07, $08, $09, $0a, $0a, $0b, $0c ; C
+    .byte $00, $01, $02, $03, $03, $04, $05, $06, $07, $08, $09, $0a, $0a, $0b, $0c, $0d ; D
+    .byte $00, $01, $02, $03, $04, $05, $06, $07, $07, $08, $09, $0a, $0b, $0c, $0d, $0e ; E
+    .byte $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $0a, $0b, $0c, $0d, $0e, $0f ; F
 
 .endif
 

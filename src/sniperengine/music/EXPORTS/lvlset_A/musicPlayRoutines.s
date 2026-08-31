@@ -2,9 +2,9 @@
 
 .if .not(useConstInitPtr)
 music_data_locations_lo:
-	.byte <music_data_pvz_deplanted_music0
+	.byte <music_data_famidash_music0
 music_data_locations_hi:
-	.byte >music_data_pvz_deplanted_music0
+	.byte >music_data_famidash_music0
 .endif
 
 music_counts:

@@ -2,27 +2,22 @@
 
 #if !__VS_SYSTEM
 
-banked(sound_test_bank.musictext.data.0) const char musicSoundTestString00[15] = "Stay Inside Me";
-banked(sound_test_bank.musictext.data.1) const char musicSoundTestString01[13] = "TIME MACHINE";
-banked(sound_test_bank.musictext.data.2) const char musicSoundTestString02[10] = "idfk lmao";
-banked(sound_test_bank.musictext.data.3) const char musicSoundTestString03[11] = "WATERFLAME";
+banked(sound_test_bank.musictext.data.0) const char musicSoundTestString00[12] = "DESERT CITY";
+banked(sound_test_bank.musictext.data.1) const char musicSoundTestString01[14] = "KEVIN MACLEOD";
 
 
 banked(sound_test_bank.musictext.ptr) const char* const xbgmtextsUpper[] = {
-	NULL,
 	NULL,
 };
 
 
 banked(sound_test_bank.musictext.ptr) const char* const xbgmtextsLower[] = {
 	musicSoundTestString00,
-	musicSoundTestString01,
 };
 
 
 banked(sound_test_bank.musictext.ptr) const char* const xbgmtextsOriginalArtist[] = {
-	musicSoundTestString02,
-	musicSoundTestString03,
+	musicSoundTestString01,
 };
 
 
@@ -43,8 +38,7 @@ const u8 xbgmtextsOriginalArtistSize[] = {};
 #if !__VS_SYSTEM
 
 banked(sound_test_bank.musictext.index) const u8 xbgmlookuptable[] = {
-	song_stay_inside_me_epsm,
-	song_time_machine_epsm,
+	song_casual_game_music_09,
 };
 
 #else

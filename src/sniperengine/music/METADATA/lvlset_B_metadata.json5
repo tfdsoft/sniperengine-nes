@@ -1,7 +1,7 @@
 {
-	songModule: "music_master_except_its_new!!!!.fms",
+	songModule: "famidash_epsm.fms",
 	songs: [
-		/*{
+		{
 			fmsSongName: "Menu Theme",
 			lowerText: "MENU THEME",
 			originalArtistText: "ROBTOP",
@@ -38,7 +38,7 @@
 			coveringArtistText: "CRAFTY JUMPER",
 		},
 		{
-			fmsSongName: "Practice",
+			fmsSongName: "Stay Inside Me",
 			lowerText: "STAY INSIDE ME",
 			originalArtistText: "OCULARNEBULA",
 			coveringArtistText: "USERSNIPER",
@@ -48,14 +48,61 @@
 			lowerText: "DESERT CITY",
 			originalArtistText: "KEVIN MACLEOD",
 			coveringArtistText: "USERSNIPER",
-		},*/
+		},
 		{
-			fmsSongName: "Casual Game Music 09",
-			lowerText: "DESERT CITY",
-			originalArtistText: "KEVIN MACLEOD",
+			fmsSongName: "Insert Cash (FD2 version)",
+			lowerText: "INSERT CASH",
+			originalArtistText: "CRAFTY JUMPER",
 			coveringArtistText: "USERSNIPER",
 		},
-		
+		{
+			fmsSongName: "Select Payment Type",
+			lowerText: "SELECT PAYMENT TYPE",
+			originalArtistText: "CRAFTY JUMPER",
+			coveringArtistText: "CRAFTY JUMPER",
+		},
+		{
+			fmsSongName: "Ground to Space",
+			lowerText: "GROUND TO SPACE",
+			originalArtistText: "SEAGLOWINGPRO",
+			coveringArtistText: "CRAFTY JUMPER",
+		},
+		{
+			fmsSongName: "Pyrophoric (sniper and crafty edition)",
+			lowerText: "PYROPHORIC",
+			originalArtistText: "NERDBOY628",
+			coveringArtistText: "KABEZ",
+		},
+		{
+			fmsSongName: "Stalemate",
+			lowerText: "Stalemate",
+			originalArtistText: "KAYOSZX",
+			coveringArtistText: "LUNAR_GMD",
+		},
+		{
+			fmsSongName: "LOST (XVA REMIX) (Slaughterhouse)",
+			lowerText: "LOST",
+			originalArtistText: "CRIM3S",
+			coveringArtistText: "LUNAR_GMD",
+		},
+		{
+			fmsSongName: "Every End",
+			lowerText: "EVERY END",
+			originalArtistText: "DIMRAIN47",
+			coveringArtistText: "USERSNIPER",
+		},
+		{
+			fmsSongName: "Golden Haze",
+			lowerText: "GOLDEN HAZE",
+			originalArtistText: "DETIOUSMUSIC",
+			coveringArtistText: "USERSNIPER",
+		},
+		{
+			fmsSongName: "super underground 64",
+			lowerText: "SUPER UNDERGROUND 64",
+			originalArtistText: "NINTENDO.",
+			coveringArtistText: "USERSNIPER",
+		},
 	],
 	SFX: [
 		{
@@ -174,5 +221,5 @@
 		},
 	],
 	PCM: [],
-	dpcmAligner: "dpcm"
+	dpcmAligner: "dpcm_oversize"
 }

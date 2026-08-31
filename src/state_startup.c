@@ -20,18 +20,22 @@ banked(startup_bank.data) const unsigned char nt_startup[] = {
 };
 
 banked(startup_bank.func) void state_startup(){
+
+    // decompress graphics
     se_vram_address(0);
-    se_memory_fill((void*)0x2007,0,256);
+    se_memory_fill((void*)0x2007,0,512);
     se_vram_donut_decompress(chr_menu_font_pusab, startup_bank);
     se_vram_donut_decompress(chr_menu_tfdlogo, startup_bank);
 
-    se_vram_address(0x2000);
-    se_vram_unrle(nt_startup);
 
+    // decompress tilemap
+    se_vram_address(0x2000);
+    se_vram_unrle(nt_startup, 0);
+
+
+    // set the palette
     se_set_palette_background(pal_startup);
 
-    se_vram_address(nametable_address_A(2,27));
-    //se_memory_fill((void*)0x2007, 0x20, 32);
 
     // enable music
     se_post_nmi_ptr = se_music_update;
@@ -42,15 +46,11 @@ banked(startup_bank.func) void state_startup(){
     for(char stall=8; stall>0; stall--){
         se_wait_vsync();
     }
-    se_fade_palette_to(0,4);
 
+    se_fade_palette_to(0,4);
     for(char stall=8; stall>0; stall--){
         se_wait_vsync();
     }
-
-    for(char i=0;i<5;i++)
-    se_string_vram_buffer("THIRTY TWO BYTES! ABSOLUTE PEAK!", nametable_address_A(0,(2+i)));
-
 
     se_sfx_play(sfx_boot,0);
     
@@ -59,34 +59,11 @@ banked(startup_bank.func) void state_startup(){
 
         se_set_palette_brightness_all(4);
         if((stall >= 85)) se_set_palette_brightness_all(5);
-        //if((stall >= 83) ) se_set_palette_brightness_all(5);
-        
     }
+
 
     se_fade_palette_to(4,8);
     se_turn_off_rendering();
-
-    /*
-    vram_adr(0x0200);
-    sedonut_decompress_vram(chr_menu_font_pvz_filled, chr_bank_0);
-    sedonut_decompress_vram(chr_menu_window, chr_bank_0);
-
-    if(player1_hold & PAD_SELECT) {
-        sfx_play(sfx_explode_11,0);
-        vram_adr(0x2000);
-        vram_fill(0, 0x3c0);
-        memfill((u8*)0x6000, 0, 0x2000);
-
-        str_vram_buffer(str_ripsave, 0x21c3);
-
-        se_turn_on_rendering();
-        pal_fade_to(0,4);
-        for(char stall = 180; stall>0; stall--){
-            ppu_wait_nmi();
-        }
-        pal_fade_to(4,0);
-        se_turn_off_rendering();
-    }*/
 
     gamestate = 0xff;
     return;
@@ -96,26 +73,15 @@ banked(startup_bank.func) void state_startup(){
 
 
 
-banked(startup_bank.data) const u8 greet_irq_table[] = {
-    110,// scanlines to wait
-    0,      // lo and hi bytes
-    0,      // of function address
-    0,  // lo X
-    0,  // hi X
-    111,// lo Y
-    0,  // hi Y
-
-    7,  // scanlines to wait
-    0,      // lo and hi bytes
-    0,      // of function address
-    0,  // lo X
-    0,  // hi X
-    120,// lo Y
-    0,  // hi Y
-
-    255,
-    0,
-    0
+banked(startup_bank.data) const u8 nt_greet[]={
+0x02,0x00,0x02,0xfe,0x00,0x02,0x63,0x80,0x84,0x02,0x17,0x81,0x00,0x02,0x05,0x87,
+0xc0,0xc1,0xc2,0xc3,0x01,0x73,0x68,0x6f,0x70,0x01,0x66,0x65,0x6c,0x6c,0x61,0x01,
+0x02,0x08,0x85,0x00,0x02,0x05,0x87,0xd0,0xd1,0xd2,0xd3,0x01,0x02,0x13,0x85,0x00,
+0x02,0x05,0x87,0xe0,0xe1,0xe2,0xe3,0x01,0x69,0x27,0x6d,0x01,0x67,0x6f,0x69,0x6e,
+0x67,0x01,0x74,0x6f,0x01,0x6b,0x69,0x6c,0x6c,0x01,0x01,0x85,0x00,0x02,0x05,0x87,
+0xf0,0xf1,0xf2,0xf3,0x01,0x79,0x6f,0x75,0x72,0x73,0x65,0x6c,0x66,0x2e,0x01,0x02,
+0x09,0x85,0x00,0x02,0x05,0x83,0x86,0x02,0x17,0x82,0x00,0x02,0xfe,0x00,0x02,0xbc,
+0x55,0x00,0x02,0x25,0x02,0x00
 };
 
 banked(startup_bank.func) void thegreet_message(){
@@ -123,36 +89,26 @@ banked(startup_bank.func) void thegreet_message(){
     u16 scroll = 0;
 
     se_vram_address(nametable_address_A(0,0));
-    se_memory_fill((void*)0x2007, 0, 1024);
-    se_string_vram_buffer("WELCOME TO SNIPERENGINE.", nametable_address_A(4,14));
+    se_memory_fill((void*)0x2007, 0, 4096);
+    se_string_vram_buffer("WARBLY TEXT TEST :)", nametable_address_A(4,14));
+
+    //se_vram_address(nametable_address_A(0,0));
+    //se_vram_unrle(nt_greet,0);
 
     se_post_nmi_ptr = se_music_update;
 
-
-    se_memory_copy((void*)se_irq_table,(void*)greet_irq_table,sizeof(greet_irq_table));
-    
-    // because C is weird about putting function pointers in
-    // const arrays, i have to manually inject the function
-    // pointers into the IRQ table
-    se_write_function_to_irq_table(custom_irq_that_updates_scroll, 1);
-    se_write_function_to_irq_table(custom_irq_that_updates_scroll, 8);
-    se_write_function_to_irq_table(nofunction, 15);
-
-    
     se_music_play(0);
 
     se_set_palette_brightness_all(4);
     se_turn_on_rendering();
-
 
     __asm__("cli");
 
     while(1){
         se_wait_vsync();
 
-        scroll++;
-        se_irq_table[3] = lo(scroll);
-        se_irq_table[4] = hi(scroll);
+        if(joypad1.left) scroll++;
+        if(joypad1.right) scroll--;
 
         se_one_vram_buffer(
             (0x30 + (__prg_8000 >> 4)),
@@ -170,22 +126,58 @@ banked(startup_bank.func) void thegreet_message(){
             nametable_address_A((6+i),2)
         );
 
-        if(joypad1.press_a) {
-            se_play_sample(0xc000, 1, 1);
-            se_wait_vsync();
-        }
+        
         if(joypad1.press_b) {
             break;
         }
+
+
+        
+        se_gray_line();
+
+        // build irq table before next frame
+        se_irq_table_add_byte(110);
+        se_irq_table_add_function(custom_irq_that_updates_scroll);
+        se_irq_table_add_word((scroll>>2));
+        se_irq_table_add_word(111);
+
+        se_irq_table_add_byte(0);
+        se_irq_table_add_function(custom_irq_that_updates_scroll);
+        se_irq_table_add_word((scroll>>1));
+        se_irq_table_add_word(113);
+
+        se_irq_table_add_byte(0);
+        se_irq_table_add_function(custom_irq_that_updates_scroll);
+        se_irq_table_add_word((scroll>>0));
+        se_irq_table_add_word(115);
+
+        se_irq_table_add_byte(0);
+        se_irq_table_add_function(custom_irq_that_updates_scroll);
+        se_irq_table_add_word((scroll>>1));
+        se_irq_table_add_word(117);
+
+        se_irq_table_add_byte(0);
+        se_irq_table_add_function(custom_irq_that_updates_scroll);
+        se_irq_table_add_word((scroll>>2));
+        se_irq_table_add_word(119);
+
+        se_irq_table_add_byte(0);
+        se_irq_table_add_function(custom_irq_that_updates_scroll);
+        se_irq_table_add_word(0);
+        se_irq_table_add_word(121);
+
+        se_irq_table_add_byte(255);
+        
+        se_gray_line();
     }
 }
 
 
 file(samples_0, 1) = {
-    #embed "./samples/geometryDash0.pcm"
+    #embed "./samples/gofuckyourself0.pcm"
 };
 file(samples_1, 2) = {
-    #embed "./samples/geometryDash1.pcm"
+    #embed "./samples/gofuckyourself1.pcm"
 };
 file(samples_2, 3) = {
     #embed "./samples/geometryDash2.pcm"

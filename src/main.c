@@ -16,7 +16,7 @@ banked(fixed.main) int main(void) {
     PPU.control = se_ppu_ctrl_var = 0b10100000;
     PPU.mask = se_ppu_mask_var = 0b00000110;
     PPU.status;
-    se_init();
+    se_init(0x80);
 
     set_prg_a000(music_bank_0);
     famistudio_init(1,0xa000);

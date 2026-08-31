@@ -1,7 +1,42 @@
+/*==============================================
+ *  ENGINE CONFIGURATION
+ *  customize your ROM configuration.
+**============================================*/
+
+// Sound Test Bank =============================
+#define sound_test_bank 0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*==============================================
+ *  You shouldn't have to touch anything
+ *  below this point.
+**============================================*/
+
 typedef unsigned char u8;
 typedef unsigned short u16;
-#define u24 __BitInt(24)
+#define u24 unsigned _BitInt(24)
 typedef unsigned long u32;
+
+typedef signed char s8;
+typedef signed short s16;
+#define s24 signed _BitInt(24)
+typedef signed long s32;
 
 #define XSTR(x) #x
 #define STR(x) XSTR(x)
@@ -17,6 +52,7 @@ typedef unsigned long u32;
  #define hi(a) *(((unsigned char *)&a) + 1)
 
 #define banked(bank) __attribute__((section(".prg_rom_"STR(bank)),used))
+#define force __attribute__((section(".bss"),retain))
 #define sram __attribute__((section(".prg_ram"),retain))
 #define file(symbol, bank) __attribute__((section((".prg_rom_"STR(bank))),retain)) const u8 symbol[]
 
@@ -28,14 +64,16 @@ __attribute__((section(".aligned"),retain)) struct sprite_buffer {
     unsigned char x;
 } sprite_buffer[64];
 
+extern u8 se_palette_buffer[32];
 extern u8 se_frame_count;
 extern u8 se_ppu_ctrl_var, se_ppu_mask_var;
+extern u16 se_scroll_x, se_scroll_y;
 extern u8 se_palette_update;
-extern u8 __prg_8000, __prg_a000;
+extern u8 __prg_8000, __prg_a000, __bank_select_hi;
 extern void* se_post_nmi_ptr;
 extern void* se_irq_ptr;
-extern u8 se_sample_in_progress;
-extern u8 se_irq_table[32];
+extern u8 se_irq_table[128], se_irq_table_position, se_irq_builder_position;
+extern const u8 se_identity_table[256];
 
 struct pad {
     union {
@@ -96,20 +134,25 @@ struct pad {
 extern struct pad joypad1;
 extern struct pad joypad2;
 
-__attribute__((leaf)) void se_init();
+__attribute__((leaf)) void se_init(u8 A12_invert);
 __attribute__((leaf)) void nofunction();
 
-__attribute__((leaf)) void banked_call_a000(u8 bank, void(*method)(void));
+__attribute__((leaf)) void disable_nmi();
+__attribute__((leaf)) void enable_nmi();
+
+//__attribute__((leaf)) void banked_call_a000(u8 bank, void(*method)(void));
 __attribute__((leaf)) void set_prg_c000(u8 bank);
 __attribute__((leaf)) void set_prg_a000(u8 bank);
 __attribute__((leaf)) void set_chr_bank(u8 window, u8 bank);
-#define jsrfar_noargs(bank, func) __asm__("jsr jsrfar \n .word "STR(func)"\n .byte "STR(bank)" \n")
+#define jsrfar_noargs(bank, func) __asm__ volatile("jsr jsrfar \n .word "STR(func)"\n .byte "STR(bank)" \n" :::"a","x","y")
+#define jsrfar_ptrarg(bank, func, ptr) __asm__ volatile("lda "STR(ptr)"+0 \n sta __rc2 \n lda "STR(ptr)"+1 \n sta __rc3 \n jsr jsrfar \n .word "STR(func)"\n .byte "STR(bank)" \n" :::"a","x","y")
 
-#define se_vram_address(address) __asm__("ldx #>"STR(address)"\n stx $2006 \n ldx #<"STR(address)"\n stx $2006")
-__attribute__((leaf)) void se_vram_unrle(const void* data);
+
+__attribute__((leaf)) void se_set_scroll(u16 x, u16 y);
+void se_vram_address(u16 address) {PPU.vram.address = hi(address); PPU.vram.address = lo(address);}
+//__asm__ volatile("ldx #>"STR(address)"\n stx $2006 \n ldx #<"STR(address)"\n stx $2006")
+__attribute__((leaf)) void se_vram_unrle(const void* data, u8 usezero);
 __attribute__((leaf)) void se_vram_donut_decompress(const u8 * data, u8 bank);
-
-
 
 __attribute__((leaf)) void se_wait_vsync();
 __attribute__((leaf)) void se_wait_frames(u8 frames);
@@ -126,39 +169,60 @@ __attribute__((leaf)) void se_set_palette_brightness_sprites(u8 bright);
 __attribute__((leaf)) void se_set_palette_brightness_all(u8 bright);
 __attribute__((leaf)) void se_fade_palette_to(u8 from, u8 to);
 
+__attribute__((leaf)) void se_gray_line();
+
 __attribute__((leaf)) void se_clear_sprites();
+__attribute__((leaf)) void se_draw_sprite(u8 x, u8 y, u8 tile, u8 attr);
+__attribute__((leaf)) void se_draw_metasprite(u8 x, u8 y, const u8* const data);
 
 __attribute__((leaf)) void se_one_vram_buffer(
 	const char data, const u16 ppu_addr
 );
+__attribute__((leaf)) void se_one_vram_buffer_repeat_horizontal(
+	const char data, const u8 len, const u16 ppu_addr
+);
+__attribute__((leaf)) void se_one_vram_buffer_repeat_vertical(
+	const char data, const u8 len, const u16 ppu_addr
+);
+
+
+__attribute__((leaf)) void se_multi_vram_buffer_horizontal(
+	const char* data, const u8 len, const u16 ppu_addr
+);
+__attribute__((leaf)) void se_multi_vram_buffer_vertical(
+	const char* data, const u8 len, const u16 ppu_addr
+);
+
 __attribute__((leaf)) void se_string_vram_buffer(
 	const char *data, const u16 ppu_addr
 );
 
 
+__attribute__((leaf)) void se_flush_vram_buffer();
 
 
 __attribute__((leaf)) void se_memory_fill(void* ptr, u8 data, u16 length);
 __attribute__((leaf)) void se_memory_copy(void* to, void* from, u16 length);
 
 
-#define se_write_function_to_irq_table(ptr, index) __asm__( \
-    "ldx se_irq_table_position \n" \
+/*#define se_write_function_to_irq_table(ptr, index) __asm__ volatile( \
     "lda #<"STR(ptr)" \n" \
-    "sta se_irq_table + "STR(index)", x \n" \
+    "sta se_irq_table + "STR(index)" \n" \
     "lda #>"STR(ptr)" \n" \
-    "sta se_irq_table + "STR(index)"+1, x \n" \
-)
+    "sta se_irq_table + "STR(index)"+1 \n" \
+)*/
 
-#define se_play_sample(ptr, bank, rate) __asm__( \
-    "lda #<"STR(ptr)" \n" \
-    "ldx #>"STR(ptr)" \n" \
-    "sta $d1 \n" \
-    "stx $d2 \n" \
-    "lda #"STR(bank)" \n" \
-    "ldx #"STR(rate)" \n" \
-    "jsr se_play_sample \n" \
-)
+void se_irq_table_add_function(void* ptr){
+    se_irq_table[se_irq_builder_position++] = lo(ptr); 
+    se_irq_table[se_irq_builder_position++] = hi(ptr); 
+}
+void se_irq_table_add_byte(u8 byte){
+    se_irq_table[se_irq_builder_position++] = byte;
+}
+void se_irq_table_add_word(u16 word){
+    se_irq_table[se_irq_builder_position++] = lo(word);
+    se_irq_table[se_irq_builder_position++] = hi(word);
+}
 
 
 // == the compiler/linker figures these out ==
@@ -174,13 +238,6 @@ __attribute__((leaf)) void se_memory_copy(void* to, void* from, u16 length);
 __asm__ (
     ".section .prg_rom_fixed_lo.famistudio_dpcm_bank_callback \n"
     "famistudio_dpcm_bank_callback: \n"
-    "pha \n"
-    "lda "STR(se_sample_in_progress)" \n"
-    "beq 1f \n"
-    "pla \n"
-    "rts \n"
-    "1: \n"
-    "pla \n"
     "clc \n"
     "adc #"STR(dpcm_bank_0)" \n"
     "jmp set_prg_8000 \n"

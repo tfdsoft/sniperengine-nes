@@ -1,4 +1,20 @@
 
+
+;;
+;;  MACROS
+;;
+
+.macro cpr source, dest
+	.local @j
+    lda source+1
+    cmp dest+1
+	bne @j
+    lda source+0
+    cmp dest+0
+@j:
+.endmacro
+
+
 ; stuff from llvm-mos' mmc3 libraries. 
 .importzp __bank_select_hi,__in_progress,__prg_8000,__prg_a000
 __prg_c000 = __prg_8000
@@ -35,58 +51,61 @@ mmc3_IRQ_ENABLE  = $e001
 
 
 .segment "ZEROPAGE"
-se_palette_buffer:  .res 32
-se_palette_pointer_bg:  .res 2
-se_palette_pointer_spr: .res 2
+    se_palette_buffer:  .res 32
+    .export se_palette_buffer
+    se_palette_pointer_bg:  .res 2
+    se_palette_pointer_spr: .res 2
 
-se_name_upd_adr:    .res 1
-se_name_upd_enable: .res 1
-se_vram_index:      .res 1
-se_vram_tmp_stack_pointer:  .res 1
+    se_name_upd_adr:    .res 1
+    ;se_name_upd_enable: .res 1
+    se_vram_index:      .res 1
 
-se_joypad:          .res 7
-se_mouse_mask:      .res 1
-se_no_mouse:        .res 1
-.export se_joypad,se_mouse_mask,se_no_mouse
+    se_joypad:          .res 7
+    se_mouse_mask:      .res 1
+    se_no_mouse:        .res 1
+    .export se_joypad,se_mouse_mask,se_no_mouse
 
-se_post_nmi_ptr:    .res 2
-.export se_post_nmi_ptr
-se_irq_ptr:         .res 2
-.export se_irq_ptr
-se_sample_in_progress:  .res 1
-.export se_sample_in_progress
+    se_post_nmi_ptr:    .res 2
+    .export se_post_nmi_ptr
+    se_irq_ptr:         .res 2
+    .export se_irq_ptr
 
 ;se_rle_pointer:     .res 2 ;__rc2 is used instead
 
 .segment "BSS"
-se_frame_count:     .res 1
-.export se_frame_count
+    se_irq_table:       .res 128
+    se_irq_table_position:  .res 1
+    se_irq_builder_position:.res 1
+    .export se_irq_table, se_irq_table_position, se_irq_builder_position 
 
-se_ppu_mask_var:    .res 1
-se_ppu_ctrl_var:    .res 1
-.export se_ppu_ctrl_var, se_ppu_mask_var
+    se_frame_count:     .res 1
+    .export se_frame_count
 
-se_scroll_x:        .res 2
-se_scroll_y:        .res 2
+    se_ppu_mask_var:    .res 1
+    se_ppu_ctrl_var:    .res 1
+    .export se_ppu_ctrl_var, se_ppu_mask_var 
 
-se_vram_update:     .res 1
-se_palette_update:  .res 1
-.export se_palette_update
+    se_scroll_x:        .res 2
+    se_scroll_y:        .res 2
+    .export se_scroll_x, se_scroll_y 
+ 
+    se_vram_update:     .res 1
+    se_palette_update:  .res 1
+    .export se_palette_update 
+    se_name_upd_enable: .res 1
 
-se_sprite_id:       .res 1
+    se_sprite_id:       .res 1
 
-se_rle_tag:         .res 1
-se_rle_byte:        .res 1
+    se_rle_tag:         .res 1
+    se_rle_byte:        .res 1
 
-se_music_bank:      .res 1
-.export se_music_bank
+    se_vram_tmp_stack_pointer:  .res 1
 
-se_vram_buffer = $100   ;DONUT BUFFER IS ALSO HERE!!!!
+    se_music_bank:      .res 1
+    .export se_music_bank
 
+    se_vram_buffer = $100   ;DONUT BUFFER IS ALSO HERE!!!!
 
-se_irq_table:       .res 32
-se_irq_table_position:  .res 1
-.export se_irq_table, se_irq_table_position
 
 
 .segment "_pprg__rom__fixed__lo"
@@ -98,23 +117,24 @@ se_irq_table_position:  .res 1
 ;; init
 jmp se_init
 
+;; nmi
+jmp disable_nmi
+jmp enable_nmi
 
 ;; mmc3 functions
 jmp set_prg_a000
 jmp set_prg_c000
-jmp banked_call_a000
+;jmp banked_call_a000
 jmp set_chr_bank
 jmp jsrfar
 
-
 ;; vram functions
-.align 16
+;.align 8
 jmp se_vram_unrle
 jmp se_vram_donut_decompress
 
-
 ;; ppu functions
-.align 16
+;.align 8
 jmp se_wait_vsync
 jmp se_wait_frames
 jmp se_turn_off_rendering
@@ -132,35 +152,75 @@ jmp se_set_palette_brightness_all
 jmp se_fade_palette_to
 jmp se_clear_palette
 
-
 ;; oam stuff
 jmp se_clear_sprites
 jmp se_draw_sprite
 jmp se_draw_metasprite
 
-
 ;; vram buffer
-.align 16
+;.align 8
 ;jmp se_set_vram_update  ; not needed
 jmp se_set_vram_buffer
 
 jmp se_one_vram_buffer
 jmp se_string_vram_buffer
 
-
 ;; memory stuff
-.align 16
+;.align 8
 jmp se_memory_fill
 jmp se_memory_copy
 
 ;; music stuff
-.align 16
+;.align 8
 .import se_music_play,se_sfx_play,se_music_update
 jmp se_music_play   
 jmp se_sfx_play 
 jmp se_music_update 
 jmp famistudio_music_stop
 jmp famistudio_music_pause
+
+;;
+;;  INIT
+;;  SETS UP THE ENGINE FOR YOU
+;;
+.export se_init
+.proc se_init
+    and #%00000001 ; just the zeroth bit.
+    ror 
+    ror ; now its the seventh! 
+    ora __bank_select_hi
+    sta __bank_select_hi
+
+    ; set post-nmi pointer
+    lda #<nofunction
+    ldx #>nofunction
+    sta se_post_nmi_ptr + 0
+    stx se_post_nmi_ptr + 1
+    sta se_irq_ptr + 0
+    stx se_irq_ptr + 1
+    sta se_irq_table + 1
+    stx se_irq_table + 2
+    dec se_irq_table + 0
+    dec se_irq_table + 0 + $40
+
+    ; disable apu frame counter irq
+    lda #$c0
+    sta $4017
+    ; disable mapper irq
+    sta $e000
+
+    jsr se_clear_palette
+    jsr se_clear_sprites
+
+    ; set up vram buffer
+    jsr se_set_vram_buffer
+
+    ; enable sram
+    lda #%10000000
+    sta $a001
+
+    rts
+.endproc
 
 ;;  
 ;;  IDENTITY TABLE
@@ -215,77 +275,255 @@ se_palette_brightness_table:
 
 
 
-
-;;
-;;  INIT
-;;  SETS UP THE ENGINE FOR YOU
-;;
-.export se_init
-.proc se_init
-    ; set post-nmi pointer
-    lda #<nofunction
-    ldx #>nofunction
-    sta se_post_nmi_ptr + 0
-    stx se_post_nmi_ptr + 1
-    sta se_irq_ptr + 0
-    stx se_irq_ptr + 1
-    sta se_irq_table + 1
-    stx se_irq_table + 2
-    dec se_irq_table + 0
-
-    
-    
-
-    ; disable apu frame counter irq
-    lda #$c0
-    sta $4017
-    ; disable mapper irq
-    sta $e000
-
-    jsr se_clear_palette
-    jsr se_clear_sprites
-
-    ; set up default banks
-    lda #0
-    ldx #0
-    jsr set_chr_bank
-    lda #1
-    inx
-    inx
-    jsr set_chr_bank
-    lda #2
-    inx
-    inx
-    jsr set_chr_bank
-    lda #3
-    inx
-    jsr set_chr_bank
-    lda #4
-    inx
-    jsr set_chr_bank
-    lda #5
-    inx
-    jsr set_chr_bank
-
-    ; set up vram buffer
-    jsr se_set_vram_buffer
-
-    ; enable sram
-    lda #%10000000
-    sta $a001
-
-    rts
-.endproc
-
 .export nofunction
-.proc nofunction
+nofunction = se_identity_table+$60
+
+;;
+;;  OAM DMA SHENANIGANS
+;;  ok so basically, controller reads aligned to OAM DMA
+;;
+MouseBoundsMin:
+    .byte 1,1
+MouseBoundsMax:
+    .byte 254,239
+.align 32  ; as long as access loops aren't on a page
+            ; boundary this *should* run fine
+.export se_safe_controller_polling
+.proc se_safe_controller_polling
+    .export joypad1
+    .export joypad2
+    joypad2 = se_joypad+1
+    joypad1 = se_joypad+4
+    controller_port_1 = $4016
+    controller_port_2 = $4017
+    mouse_port = controller_port_2
+    controller_port = controller_port_1
+    kMouseZero = 0
+    kMouseButtons = 1
+    kMouseY = 2
+    kMouseX = 3
+
+    ; save registers (this *is* called from nmi, after all)
+    lda __rc2
+    pha
+    lda __rc3
+    pha
+    lda __rc4
+    pha
+    lda __rc6
+    pha
+    lda __rc7
+    pha
+    
+    ;save previous controller state
+    lda joypad1
+    sta __rc6
+
+    ;save previous controller state
+    lda joypad2
+    sta __rc7
+
+    ;save previous mouse state
+    lda se_joypad + kMouseY
+    sta __rc2
+    lda se_joypad + kMouseX
+    sta __rc3
+    lda se_joypad + kMouseButtons
+    sta __rc4
+
+    ;strobe joypads
+    ldx #0
+    ldy #1
+    sty se_joypad
+    sty controller_port_1
+    stx controller_port_1
+
+    ;INITIATE THE DMA!
+    lda #2
+    sta $4014
+
+    ; poll
+    @poll_mouse:
+        lda se_mouse_mask    ; get put get*     *576  // Starts: 4, 158, 312, 466, [620]
+        and mouse_port   ; put get put GET
+        cmp #1           ; put get
+        rol se_joypad,x        ; put get put get* PUT GET  *432
+        bcc @poll_mouse            ; put get (put)
+
+        inx                ; put get
+        cpx #4           ; put get
+        sty se_joypad,x        ; put get put GET
+        bne @poll_mouse             ; put get (put)
+
+    @poll_controller:
+        lda controller_port ; put get put GET        // Starts: 619
+        and #3           ; put get*         *672
+        cmp #1           ; put get
+        rol joypad1 ; put get put get put    // This can desync, but we finish before it matters.
+        bcc @poll_controller             ; get put (get)
+
+    ;".if 0" // TODO support SNES extra buttons 
+    ;    "STY joypad1+1" // get put get
+    ;    "NOP"                // put get
+    ;"1:"
+    ;    "LDA CONTROLLER_PORT \n" // put get* put GET *848  // Starts: 751, [879]
+    ;    "AND #$03 \n"           // put get
+    ;    "CMP #$01 \n"           // put get
+    ;    "ROL joypad1+1 \n" // put get put get put    // This can desync, but we finish before it matters.
+    ;    "BCC 1b \n"             // get* put (get)   *860
+
+    ; now that the important part is over,
+    ; enable interrupts
+    cli
+
+    ; calculate the remaining fields:
+    ; pressed
+    lda __rc6
+    eor #$ff
+    and joypad1
+    sta joypad1 + 1
+
+    ; released
+    lda joypad1
+    eor #$ff
+    and __rc6
+    sta joypad1 + 2
+
+    ; Check the report to see if we have a snes mouse plugged in
+    lda se_joypad + kMouseButtons
+    and #15
+    cmp #1
+    beq @snes_mouse_detected
+        ; no mouse? treat this as a standard controller instead
+        lda se_joypad + kMouseZero
+        sta joypad2
+
+        ; pressed
+        lda __rc7
+        eor #$ff
+        and joypad2
+        sta joypad2 + 1
+
+        ; released
+        lda joypad1
+        eor #$ff
+        and __rc7
+        sta joypad2 + 2
+
+        ; no snes mouse, so leave the first field empty
+        ldx #0
+        stx se_joypad + kMouseZero
+        inx
+        stx se_no_mouse
+        jmp @exit
+
+    @snes_mouse_detected:
+        ldx #1
+
+    @loop:
+        lda se_joypad + kMouseY,x
+        bpl :+
+            ; subtract the negative number instead
+            and #$7f
+            sta se_joypad + kMouseZero
+            lda __rc2,x
+            sec
+            sbc se_joypad + kMouseZero
+            ; check if we underflowed
+            bcc @wrappednegative
+
+            ;check lower bounds
+            cmp MouseBoundsMin,x
+            bcs @setvalue   ; didn't wrap so set the value now
+        
+        @wrappednegative:
+            lda MouseBoundsMin,x
+            jmp @setvalue
+
+        :   ; add the positive number
+            clc
+            adc __rc2,x 
+            ; check if we wrapped, set to the max bounds if we did
+            bcs @wrapped
+
+            ; check the upper bounds
+            cmp MouseBoundsMax,x
+            bcc @setvalue
+
+        @wrapped:
+            lda MouseBoundsMax,x 
+        
+        @setvalue:
+            sta se_joypad + kMouseY,x 
+            dex
+            bpl @loop
+
+    ; calculate newly pressed buttons and shift it into byte zero
+    lda __rc4
+    eor #$c0
+    and se_joypad + kMouseButtons
+    rol
+    ror se_joypad + kMouseZero
+    rol
+    ror se_joypad + kMouseZero
+
+    ; calculate newly released buttons
+
+    lda se_joypad + kMouseButtons
+    eor #$c0
+    and __rc4
+    rol
+    ror se_joypad + kMouseZero
+    rol
+    ror se_joypad + kMouseZero
+
+    ; set the connected bit
+    sec
+    ror se_joypad + kMouseZero
+
+    @exit:
+
+    pla
+    sta __rc7
+    pla
+    sta __rc6
+    pla
+    sta __rc4
+    pla
+    sta __rc3
+    pla
+    sta __rc2
+    
     rts
 .endproc
+
+; THE SOUND ENGINE!
+;.include "famistudio_ca65.s"
+
+.export disable_nmi
+.proc disable_nmi
+    lda se_ppu_ctrl_var
+    and #%01111111
+    ; fall through
+.endproc
+
+.proc toggle_nmi_common
+    sta se_ppu_ctrl_var
+    sta $2000
+    rts
+.endproc
+
+.export enable_nmi
+.proc enable_nmi
+    lda se_ppu_ctrl_var
+    ora #%10000000
+    bmi toggle_nmi_common
+.endproc
+
 
 ;;
 ;;  MMC3 BANKING FUNCTIONS
 ;;  CODE IS FROM THE LLVM-MOS-SDK (modified, of course)
-;;  EVERYTHING FROM THIS POINT FORWARD IS AT $8300
 ;;
 .export set_prg_c000
 .proc set_prg_c000
@@ -293,7 +531,7 @@ se_palette_brightness_table:
 	tax
 	lda #%00000110
 	ora __bank_select_hi
-	jmp __set_reg_retry
+	bne __set_reg_retry
 .endproc
 
 .export set_prg_a000
@@ -316,23 +554,23 @@ se_palette_brightness_table:
 	rts
 .endproc
 
-.export banked_call_a000
-.proc banked_call_a000
-    .import __call_indir
-	tay
-	lda __prg_a000
-	pha
-	tya
-	jsr set_prg_a000
-	lda __rc2
-	sta __rc18
-	lda __rc3
-	sta __rc19
-	jsr __call_indir
-	pla
-	jsr set_prg_a000
-	rts
-.endproc
+;.export banked_call_a000
+;.proc banked_call_a000
+;    .import __call_indir
+;	tay
+;	lda __prg_a000
+;	pha
+;	tya
+;	jsr set_prg_a000
+;	lda __rc2
+;	sta __rc18
+;	lda __rc3
+;	sta __rc19
+;	jsr __call_indir
+;	pla
+;	jmp set_prg_a000
+;	;rts
+;.endproc
 
 .export set_chr_bank
 .proc set_chr_bank
@@ -344,10 +582,10 @@ se_palette_brightness_table:
 	rts
 .endproc
 
-.proc set_chr_bank_retry
-	ora __bank_select_hi
-	jmp __set_reg_retry
-.endproc
+;.proc set_chr_bank_retry
+;	ora __bank_select_hi
+;	jmp __set_reg_retry
+;.endproc
 
 .export jsrfar
 .proc jsrfar
@@ -414,7 +652,6 @@ se_palette_brightness_table:
         plp
         plp
         rts
-
 .endproc
 
 
@@ -474,7 +711,7 @@ donut_stream_ptr = $02
 ; donut_block_count = $00
 
 .proc donut_block
-PPU_DATA = $2007
+    PPU_DATA = $2007
   ; lda $02
   ; sta donut_stream_ptr
   ; lda $03
@@ -487,26 +724,26 @@ PPU_DATA = $2007
         ; bail if donut_decompress_block does not
         ; advance X by 64 bytes, indicating a header error.
 
-    tsx
-    stx se_vram_tmp_stack_pointer
-    ldx #$0f    ; set temporary stack location for faster writes
-    txs
+    ;tsx
+    ;stx se_vram_tmp_stack_pointer
+    ;ldx #$0f    ; set temporary stack location for faster writes
+    ;txs
 
     ldx #256 - 64
     upload_loop:
-        pla ;lda a:donut_block_buffer - (256 - 64), x
+        lda a:donut_block_buffer - (256 - 64), x
         sta PPU_DATA
         inx
         bmi upload_loop
+    bpl block_loop
 
-    ldx se_vram_tmp_stack_pointer
-    txs
+    ;ldx se_vram_tmp_stack_pointer
+    ;txs
     bne block_loop
 
     ; ldx donut_block_count
     ; bne block_loop
     end_block_upload:
-    
     
     rts
 .endproc
@@ -774,16 +1011,37 @@ PPU_DATA = $2007
 ;;
 
 
-;; see the header
-;.export se_vram_address
-;.proc se_vram_address
-;    stx $2006
-;    sta $2006
-;    rts
-;.endproc
+.export se_set_scroll
+.proc se_set_scroll
+    ;   AX: scroll x
+    ;rc2/3: scroll y
+    sta se_scroll_x+0
+    stx se_scroll_x+1
+    txa
+    and #1
+
+    asl __rc3
+    ora __rc3
+    and #%00000011
+    sta __rc3
+
+    lda se_ppu_ctrl_var
+    and #%11111100
+    ora __rc3
+    sta se_ppu_ctrl_var
+    
+    lda __rc2
+    sta se_scroll_y+0
+    lda __rc3
+    lsr
+    sta se_scroll_y+1
+
+    rts
+.endproc
 
 .export se_vram_unrle
 .proc se_vram_unrle
+    pha
 
     se_rle_pointer = __rc2
 
@@ -794,16 +1052,19 @@ PPU_DATA = $2007
     lda (se_rle_pointer),y
     sta se_rle_tag
     iny
-    bne @1
+    bne :+
     inc se_rle_pointer+1
+    :
+    
+    pla
+    bne @ignorezero_loop
 
     @1:
         lda (se_rle_pointer+0),y
         iny
-        bne @11
+        bne :+
         inc se_rle_pointer+1
-
-    @11:
+        :
         cmp se_rle_tag
         beq @2
         sta $2007
@@ -812,12 +1073,11 @@ PPU_DATA = $2007
 
     @2:
         lda (se_rle_pointer+0),y
-        beq @4
+        beq @exit
         iny
-        bne @21
+        bne :+
         inc se_rle_pointer+1
-
-    @21:
+        :
         tax
         lda se_rle_byte
 
@@ -826,9 +1086,49 @@ PPU_DATA = $2007
         dex
         bne @3
         beq @1
-
-    @4:
+    @exit:
     rts
+
+    @ignorezero_loop:
+        lda (se_rle_pointer+0),y
+        iny
+        bne :+
+        inc se_rle_pointer+1
+        :
+        cmp se_rle_tag  ; is it the tag?
+        beq @grab_run_length
+        sta se_rle_byte
+
+        cmp #0
+        beq :+
+        sta $2007
+        bne @ignorezero_loop
+        :
+        lda $2007
+        jmp @ignorezero_loop
+
+    @grab_run_length:
+        lda (se_rle_pointer+0),y
+        beq @exit
+        iny
+        bne :+
+        inc se_rle_pointer+1
+        :
+        tax
+        lda se_rle_byte
+        beq @read_loop
+
+    @write_loop:
+        sta $2007
+        dex
+        bne @write_loop
+        beq @ignorezero_loop
+
+    @read_loop:
+        lda $2007
+        dex
+        bne @read_loop
+        beq @ignorezero_loop
 .endproc
 
 .export se_vram_donut_decompress
@@ -843,31 +1143,28 @@ PPU_DATA = $2007
     pha
 
     ; stop the vram buffer *juuuuuust* in case
-    lda #255
-    sta $100
+    ;lda #255
+    ;sta se_vram_buffer+0
 
     txa
 
     jsr set_prg_a000
 
     ; disable nmi
-    lda se_ppu_ctrl_var
-    and #%01111111
-    sta $2000
+    ;lda se_ppu_ctrl_var
+    ;and #%01111111
+    ;sta $2000
 
     jsr donut_block
 
     ; revert ppu_ctrl
-    lda se_ppu_ctrl_var
-    sta $2000
+    ;lda se_ppu_ctrl_var
+    ;sta $2000
 
     pla
-    jsr set_prg_a000
-    rts
+    jmp set_prg_a000
+    ;rts
 .endproc
-
-
-
 
 
 
@@ -945,8 +1242,7 @@ PPU_DATA = $2007
         iny
         dec __rc4
         bne @loop
-    inc se_palette_update
-    rts
+    beq __inc_palette_update ; bra
 .endproc
 
 .export se_set_palette_color
@@ -956,8 +1252,7 @@ PPU_DATA = $2007
     tax
     lda __rc2
     sta se_palette_buffer, x
-    inc se_palette_update
-    rts
+    bpl __inc_palette_update ; bra
 .endproc
 
 .export se_set_palette_brightness_background
@@ -975,8 +1270,7 @@ PPU_DATA = $2007
     adc     #0
     stx     se_palette_pointer_bg+0
     sta     se_palette_pointer_bg+1
-    inc     se_palette_update
-    rts
+    jmp __inc_palette_update ; bra
 .endproc
 
 .export se_set_palette_brightness_sprites
@@ -994,9 +1288,14 @@ PPU_DATA = $2007
     adc     #0
     stx     se_palette_pointer_spr+0
     sta     se_palette_pointer_spr+1
-    inc     se_palette_update
+    ;fall through
+.endproc
+
+.proc __inc_palette_update
+    inc se_palette_update
     rts
 .endproc
+
 
 .export se_set_palette_brightness_all
 .proc se_set_palette_brightness_all
@@ -1015,11 +1314,26 @@ PPU_DATA = $2007
 	pha
 	stx __rc20 ;to
 	sty __rc21 ;from
+
+    cpx __rc21
+    bcs @dont_set_emp_bits_at_first
+        lda se_ppu_mask_var
+        ora #%11100000
+        sta se_ppu_mask_var
+    @dont_set_emp_bits_at_first:
+
 	jmp @check_equal
 
     @fade_loop:
-        lda #2
-        jsr se_wait_frames ;wait 4 frames
+        lda se_ppu_mask_var
+        eor #%11100000
+        sta se_ppu_mask_var
+        jsr se_wait_vsync ;wait 4 frames
+
+        lda se_ppu_mask_var
+        eor #%11100000
+        sta se_ppu_mask_var
+        jsr se_wait_vsync ;wait 4 frames
 
         lda __rc21 ;from
         cmp __rc20 ;to
@@ -1044,6 +1358,9 @@ PPU_DATA = $2007
         bne @fade_loop
 
     @done:
+    lda se_ppu_mask_var
+    and #%00011111
+    sta se_ppu_mask_var
 	jsr se_wait_vsync ;do 1 final, make sure the last change goes
 	pla
 	sta __rc21
@@ -1065,10 +1382,33 @@ PPU_DATA = $2007
     rts
 .endproc
 
-;.export
-;.proc
-;
-;.endproc
+
+.export se_gray_line
+.proc se_gray_line
+    lda se_ppu_mask_var
+    and #$1f
+    ora #1
+    sta $2001
+
+    ldx #20
+    @1:
+        dex
+        bne @1
+
+    lda se_ppu_mask_var
+    and #$1e
+    ora #$e0
+    sta $2001
+    
+    ldx #20
+    @2:
+        dex
+        bne @2
+
+    lda se_ppu_mask_var
+    sta $2001
+    rts
+.endproc
 
 
 ;.export
@@ -1110,6 +1450,7 @@ PPU_DATA = $2007
     ldy se_sprite_id
     sta sprite_buffer+3,y
 
+    dex
     txa
     sta sprite_buffer+0,y
 
@@ -1147,8 +1488,10 @@ PPU_DATA = $2007
         sta sprite_buffer+3,x
         lda (__rc2),y		;y offset
         iny
-        clc
+        clc 
         adc __rc5
+        sec
+        sbc #1
         sta sprite_buffer+0,x
         lda (__rc2),y		;tile
         iny
@@ -1177,15 +1520,7 @@ PPU_DATA = $2007
     stx se_vram_buffer
     inx
     stx se_vram_index
-    ldx $2002
-    rts
-.endproc
-
-.export se_set_vram_update
-.proc se_set_vram_update
-    sta se_name_upd_adr+0
-    stx se_name_upd_adr+1
-    inc se_name_upd_enable
+    ;ldx $2002
     rts
 .endproc
 
@@ -1193,9 +1528,11 @@ PPU_DATA = $2007
 .proc se_set_vram_buffer
     lda #<se_vram_buffer
     ldx #>se_vram_buffer
-    jsr se_set_vram_update
-    jsr __post_vram_update
-    rts
+    sta se_name_upd_adr+0
+    stx se_name_upd_adr+1
+    inc se_name_upd_enable
+    jmp __post_vram_update
+    ;rts
 .endproc
 
 .export se_one_vram_buffer
@@ -1218,6 +1555,115 @@ PPU_DATA = $2007
 
     rts
 .endproc
+
+.export se_one_vram_buffer_repeat_vertical
+.proc se_one_vram_buffer_repeat_vertical
+    pha
+    lda __rc3
+    and #%00111111
+    ora #%10000000
+    bmi __se_one_vram_buffer_repeat ; bra
+.endproc
+
+.export se_one_vram_buffer_repeat_horizontal
+.proc se_one_vram_buffer_repeat_horizontal
+    pha
+    lda __rc3
+    and #%00111111
+    ora #%01000000
+    ; fall through
+.endproc
+
+.proc __se_one_vram_buffer_repeat
+    ldy se_vram_index
+    sta se_vram_buffer, y 
+    iny
+    lda __rc2
+    sta se_vram_buffer, y 
+    iny
+    txa
+    ora #%10000000
+    sta se_vram_buffer, y 
+    iny
+    pla
+    sta se_vram_buffer, y 
+    iny
+
+    ldx se_identity_table,y ;tyx
+    jmp __exit_vram_buffer_routine
+.endproc
+
+
+.export se_multi_vram_buffer_vertical
+.proc se_multi_vram_buffer_vertical
+    ;     A - len
+	;     X - <ppu_address
+	; __rc2 - <data
+	; __rc3 - >data
+	; __rc4 - >ppu_address
+    cmp #0
+    beq __exit_vram_buffer_noupdate
+
+    pha
+    lda __rc4
+    and #%00111111
+    ora #%10000000
+    bmi __se_multi_vram_buffer
+.endproc
+
+.export se_multi_vram_buffer_horizontal
+.proc se_multi_vram_buffer_horizontal
+    ;     A - len
+	;     X - <ppu_address
+	; __rc2 - <data
+	; __rc3 - >data
+	; __rc4 - >ppu_address
+    cmp #0
+    beq __exit_vram_buffer_noupdate
+
+    pha
+    lda __rc4
+    and #%00111111
+    ora #%01000000
+    ; fall through
+.endproc
+
+.proc __se_multi_vram_buffer
+
+
+    ldy se_vram_index
+    sta se_vram_buffer+0, y ;<ppu_address
+    txa
+    sta se_vram_buffer+1, y ;>ppu_address
+    pla
+    sta se_vram_buffer+2, y ;len
+    sta __rc4 ; save length for comparison
+    iny
+    iny
+    iny
+
+    ldx se_identity_table, y ; tyx
+
+    ldy #0
+    @loop:
+        lda (__rc2), y 
+        sta se_vram_buffer, x
+        inx
+        iny
+        cpy __rc4
+        bne @loop
+    ; fall through
+.endproc
+
+__exit_vram_buffer_routine:
+    lda #$ff
+    sta se_vram_buffer, x
+    stx se_vram_index
+
+__exit_vram_buffer_noupdate:
+    rts
+;
+
 
 .export se_string_vram_buffer
 .proc se_string_vram_buffer
@@ -1265,8 +1711,11 @@ PPU_DATA = $2007
     rts
 .endproc
 
+
+
 ; system from neslib, modified to be  T H E  S P E E D
-.proc flush_vram_update2
+.export se_flush_vram_buffer
+.proc se_flush_vram_buffer
     tsx
     stx se_vram_tmp_stack_pointer
 
@@ -1286,7 +1735,8 @@ PPU_DATA = $2007
         bit __rc18 ; V if horizontal, N if vertical
 
         bvs @update_horizontal_sequence
-        bvc @update_single_tile
+        bmi @update_vertical_sequence
+        ;bvc @update_single_tile
         ;cmp #$40
         ;bcc @update_single_tile
 
@@ -1297,20 +1747,18 @@ PPU_DATA = $2007
         ;bmi @update_horizontal_sequence
         ;cpx #$ff
         ;beq @exit
-
-    @update_vertical_sequence:
-        lda se_ppu_ctrl_var
-        ora #$04
-        bne @update_common_sequence
-
     @update_single_tile:
         sta $2006
         pla
         sta $2006
         pla
         sta $2007
-        clc
-        bcc __get_next_instruction
+        jmp __get_next_instruction
+
+    @update_vertical_sequence:
+        lda se_ppu_ctrl_var
+        ora #$04
+        bne @update_common_sequence
 
     @update_horizontal_sequence:
         lda se_ppu_ctrl_var
@@ -1357,6 +1805,7 @@ PPU_DATA = $2007
     @update_repeated_byte:
         and #$7f
         tax
+        beq @do_not_update
         pla
     @update_repeated_byte_loop:
         sta $2007
@@ -1365,18 +1814,18 @@ PPU_DATA = $2007
 
         lda se_ppu_ctrl_var
         sta $2000
-
-        bne __get_next_instruction
+        jmp __get_next_instruction
 
     @exit:
     ldx se_vram_tmp_stack_pointer
     txs
+
     jmp __post_vram_update
 
-    return_to_flush_vram_update:
+    @do_not_update:
+        pla
+        jmp pla_sta_2007_table_end
         
-
-
     ;.align 256
     the_funny_pla_sta_2007_table_lmao:
         .repeat 32,i
@@ -1396,60 +1845,127 @@ PPU_DATA = $2007
 ;;  MEMORY FUNCTIONS
 ;;  move memory around!
 ;;
-
 .export se_memory_fill
 .proc se_memory_fill
+    PPU_PAGE = $20
     ;   A: value to fill with
     ;   X: length of memory region (lo)
     ;__rc2: ptr to memory to fill (lo)
     ;__rc3: ptr to memory to fill (hi)
     ;__rc4: length of memory region (hi)
 
-    
-    pha
-    ldy __rc2 ; save low byte of memory ptr
-    lda #0
-    sta __rc2 ; write 0 to low byte to save cycles later
+    stx __rc5
+    cpx #0
 
-    ; is the pointer in the $2xxx region? (likely ppu_data)
-    lda __rc3
-    and #$f0 ; mask off the lower four bits
-    cmp #$20
-    beq @no_inc_pointer
+    bne @0
+    ldx __rc4
+    beq @5
+    @0:
+    ldx __rc3
+    cpx #PPU_PAGE
+    beq ppu_fill
+    tay ; -+
+    txa ;  +-- all of this for a phx
+    pha ;  |
+    tya ; -+
+    ldx __rc4
+    beq @2
+    ldy #0
+    @1:
+    sta (__rc2), y 
+    iny
+    bne @1
+    inc __rc3
+    dex
+    bne @1
+    @2: 
+    ldy __rc5
+    beq @4
+    @3:
+    dey
+    sta (__rc2), y 
+    cpy #0
+    bne @3
+    @4:
     pla
-
-    @inc_loop:
-        sta (__rc2),y 
-        iny
-        bne :+ ; inc pointer
-        inc __rc3
-        : 
-        dex
-        bne @inc_loop
-    
-    @il_is_remaining_length_zero:
-        cpx __rc4
-        beq @done
-        dec __rc4
-        jmp @inc_loop
-
-
-    @no_inc_pointer:
-    pla
-
-    @no_inc_loop:
-        sta $2007 ; using indexed instructions breaks it :sob: 
-        dex
-        bne @no_inc_loop
-
-    @nil_is_remaining_length_zero:
-        cpx __rc4
-        beq @done
-        dec __rc4
-        jmp @no_inc_loop
-
-    @done:
+    tax
+    stx __rc3
+    @5:
     rts
+
+    ppu_fill:
+    ldx __rc4
+    beq @2
+    ldy #0
+    @1:
+    sta $2007
+    iny
+    bne @1
+    dex
+    bne @1
+    @2:
+    ldy __rc5
+    beq @4
+    @3:
+    dey
+    sta $2007
+    cpy #0
+    bne @3
+    @4:
+    rts
+
+    
+    ;pha
+    ;ldy __rc2 ; save low byte of memory ptr
+    ;lda #0
+    ;sta __rc2 ; write 0 to low byte to save cycles later
+
+    ;; is the pointer in the $2xxx region? (likely ppu_data)
+    ;lda __rc3
+    ;and #$f0 ; mask off the lower four bits
+    ;cmp #$20
+    ;beq @no_inc_pointer
+    
+    ;pla
+
+    ;; decrement x by one
+    ;dex
+    ;cpx #$ff
+    ;bne @inc_loop
+    ;dec __rc4
+
+    ;@inc_loop:
+    ;    sta (__rc2),y 
+    ;    iny
+    ;    bne :+ ; inc pointer
+    ;    inc __rc3
+    ;    : 
+    ;    dex
+    ;    bne @inc_loop
+    
+    ;@il_is_remaining_length_zero:
+    ;    cpx __rc4 ; x should be zero here
+    ;    beq @done
+    ;    dec __rc4
+    ;    jmp @inc_loop
+
+
+    ;@no_inc_pointer:
+    ;pla
+
+    ;@no_inc_loop:
+    ;    sta $2007 ; using indexed instructions breaks it :sob: 
+    ;    dex
+    ;    bne @no_inc_loop
+
+    ;@nil_is_remaining_length_zero:
+    ;    cpx __rc4
+    ;    beq @done
+    ;    dec __rc4
+    ;    jmp @no_inc_loop
+
+    ;@done:
+    ;rts
         
 
 .endproc
@@ -1457,35 +1973,102 @@ PPU_DATA = $2007
 ; memcpy(*to, *from, numBytes);
 .export se_memory_copy
 .proc se_memory_copy
+    PPU_PAGE = $20
     ;   A: length of memory region (lo)
     ;   X: length of memory region (hi)
-    ;__rc2: ptr to memory to (lo)
-    ;__rc3: ptr to memory to (hi)
-    ;__rc4: ptr to memory from (lo)
-    ;__rc5: ptr to memory from (hi)
+    ;__rc2: ptr to memory target (lo)
+    ;__rc3: ptr to memory target (hi)
+    ;__rc4: ptr to memory source (lo)
+    ;__rc5: ptr to memory source (hi)
 
-    stx __rc6 ; high byte of length is now in a zp register
-    tax
+
+    ; store length in __rc6/7 for now
+    sta __rc6
+    stx __rc7
+
+    ; if length is zero, don't bother with the copy
+    ora __rc7
+    beq @exit   
+
+    ; detect PPU area ($20xx)
+    lda __rc5
+    cmp #PPU_PAGE
+    bne @1
+    lda __rc3
+    cmp #PPU_PAGE
+    beq @0
+    jmp @ppu_fetch
+    @0:
+    @ppu_fetch:
+    lda #1
+    rts ; yeah sorry, you can't copy from the ppu to the ppu
+    @1:
+    lda __rc3
+    cmp #PPU_PAGE
+    beq ppu_stash
+
+    ;lda __rc5
+    ;pha
+    ;lda __rc3
+    ;pha
+
+    ;cpr __rc5, __rc3 ; compare registers
+    ;bcc @8
+
+    ; forward copy
     ldy #0
+    ldx __rc7
+    beq @5
+    @4:
+    lda (__rc4), y 
+    sta (__rc2), y 
+    iny
+    bne @4
+    inc __rc5
+    inc __rc3
+    dex
+    bne @4
+    @5:
+    cpy __rc6
+    beq @6
+    lda (__rc4), y 
+    sta (__rc2), y 
+    iny 
+    jmp @5
+    @6:
+    ;pla
+    ;sta __rc3
+    ;pla
+    ;sta __rc5
 
-    @inc_loop:
-        lda (__rc4),y 
-        sta (__rc2),y 
-        iny
-        bne :+ ; inc pointer if Y=0
-            inc __rc3
-            inc __rc5
-        :
-        dex
-        bne @inc_loop
-    ; is X equal to zero? if so, decrement __rc6
-        dec __rc6
-        bpl @inc_loop ; fall through if X is negative
-    
-    @done:
+    @exit:
     rts
-        
 
+    ppu_stash:
+    ;lda __rc5
+    ;pha
+    ldy #0
+    ldx __rc7
+    beq @5
+    @4:
+    lda (__rc4),y 
+    sta $2007
+    iny
+    bne @4
+    inc __rc5
+    dex
+    bne @4
+    @5:
+    cpy __rc6
+    beq @6
+    lda (__rc4),y 
+    sta $2007
+    iny
+    jmp @5
+    @6:
+    ;pla
+    ;sta __rc5
+    rts
 .endproc
 
 
@@ -1496,228 +2079,6 @@ PPU_DATA = $2007
 ;;
     
     ; see the header file
-
-
-
-
-;;
-;;  OAM DMA SHENANIGANS
-;;  ok so basically, controller reads aligned to OAM DMA
-;;
-
-MouseBoundsMin:
-    .byte 1,1
-MouseBoundsMax:
-    .byte 254,239
-
-
-.export se_safe_controller_polling
-.proc se_safe_controller_polling
-    .export joypad1
-    .export joypad2
-    joypad2 = se_joypad+1
-    joypad1 = se_joypad+4
-    controller_port_1 = $4016
-    controller_port_2 = $4017
-    mouse_port = controller_port_2
-    controller_port = controller_port_1
-    kMouseZero = 0
-    kMouseButtons = 1
-    kMouseY = 2
-    kMouseX = 3
-
-    ; save registers (this *is* called from nmi, after all)
-    lda __rc2
-    pha
-    lda __rc3
-    pha
-    lda __rc4
-    pha
-    lda __rc6
-    pha
-    lda __rc7
-    pha
-    
-    ;save previous controller state
-    lda joypad1
-    sta __rc6
-
-    ;save previous controller state
-    lda joypad2
-    sta __rc7
-
-    ;save previous mouse state
-    lda se_joypad + kMouseY
-    sta __rc2
-    lda se_joypad + kMouseX
-    sta __rc3
-    lda se_joypad + kMouseButtons
-    sta __rc4
-
-    ;strobe joypads
-    ldx #0
-    ldy #1
-    sty se_joypad
-    sty controller_port_1
-    stx controller_port_1
-
-    ;INITIATE THE DMA!
-    lda #2
-    sta $4014
-
-    ; poll
-    @poll_mouse:
-        lda se_mouse_mask    ; get put get*     *576  // Starts: 4, 158, 312, 466, [620]
-        and mouse_port   ; put get put GET
-        cmp #1           ; put get
-        rol se_joypad,x        ; put get put get* PUT GET  *432
-        bcc @poll_mouse            ; put get (put)
-
-        inx                ; put get
-        cpx #4           ; put get
-        sty se_joypad,x        ; put get put GET
-        bne @poll_mouse             ; put get (put)
-
-    @poll_controller:
-        lda controller_port ; put get put GET        // Starts: 619
-        and #3           ; put get*         *672
-        cmp #1           ; put get
-        rol joypad1 ; put get put get put    // This can desync, but we finish before it matters.
-        bcc @poll_controller             ; get put (get)
-
-    ;".if 0" // TODO support SNES extra buttons 
-    ;    "STY joypad1+1" // get put get
-    ;    "NOP"                // put get
-    ;"1:"
-    ;    "LDA CONTROLLER_PORT \n" // put get* put GET *848  // Starts: 751, [879]
-    ;    "AND #$03 \n"           // put get
-    ;    "CMP #$01 \n"           // put get
-    ;    "ROL joypad1+1 \n" // put get put get put    // This can desync, but we finish before it matters.
-    ;    "BCC 1b \n"             // get* put (get)   *860
-
-
-    ; calculate the remaining fields:
-    ; pressed
-    lda __rc6
-    eor #$ff
-    and joypad1
-    sta joypad1 + 1
-
-    ; released
-    lda joypad1
-    eor #$ff
-    and __rc6
-    sta joypad1 + 2
-
-    ; Check the report to see if we have a snes mouse plugged in
-    lda se_joypad + kMouseButtons
-    and #15
-    cmp #1
-    beq @snes_mouse_detected
-        ; no mouse? treat this as a standard controller instead
-        lda se_joypad + kMouseZero
-        sta joypad2
-
-        ; pressed
-        lda __rc7
-        eor #$ff
-        and joypad2
-        sta joypad2 + 1
-
-        ; released
-        lda joypad1
-        eor #$ff
-        and __rc7
-        sta joypad2 + 2
-
-        ; no snes mouse, so leave the first field empty
-        ldx #0
-        stx se_joypad + kMouseZero
-        inx
-        stx se_no_mouse
-        jmp @exit
-
-    @snes_mouse_detected:
-        ldx #1
-
-    @loop:
-        lda se_joypad + kMouseY,x
-        bpl :+
-            ; subtract the negative number instead
-            and #$7f
-            sta se_joypad + kMouseZero
-            lda __rc2,x
-            sec
-            sbc se_joypad + kMouseZero
-            ; check if we underflowed
-            bcc @wrappednegative
-
-            ;check lower bounds
-            cmp MouseBoundsMin,x
-            bcs @setvalue   ; didn't wrap so set the value now
-        
-        @wrappednegative:
-            lda MouseBoundsMin,x
-            jmp @setvalue
-
-        :   ; add the positive number
-            clc
-            adc __rc2,x 
-            ; check if we wrapped, set to the max bounds if we did
-            bcs @wrapped
-
-            ; check the upper bounds
-            cmp MouseBoundsMax,x
-            bcc @setvalue
-
-        @wrapped:
-            lda MouseBoundsMax,x 
-        
-        @setvalue:
-            sta se_joypad + kMouseY,x 
-            dex
-            bpl @loop
-
-    ; calculate newly pressed buttons and shift it into byte zero
-    lda __rc4
-    eor #$c0
-    and se_joypad + kMouseButtons
-    rol
-    ror se_joypad + kMouseZero
-    rol
-    ror se_joypad + kMouseZero
-
-    ; calculate newly released buttons
-
-    lda se_joypad + kMouseButtons
-    eor #$c0
-    and __rc4
-    rol
-    ror se_joypad + kMouseZero
-    rol
-    ror se_joypad + kMouseZero
-
-    ; set the connected bit
-    sec
-    ror se_joypad + kMouseZero
-
-    @exit:
-
-    pla
-    sta __rc7
-    pla
-    sta __rc6
-    pla
-    sta __rc4
-    pla
-    sta __rc3
-    pla
-    sta __rc2
-    
-    rts
-.endproc
-
-
 
 
 
@@ -1806,7 +2167,8 @@ MouseBoundsMax:
             beq @skip_nametable_updates
                 ldy #0
                 sty se_vram_update
-                jsr flush_vram_update2
+                sty se_vram_index
+                jsr se_flush_vram_buffer
             @skip_nametable_updates:
             ldy $2002
 
@@ -1821,33 +2183,38 @@ MouseBoundsMax:
 
         ; disable irq while we update it
         lda #0
-        sta se_irq_table_position
         sta mmc3_IRQ_DISABLE
 
+        ; flip bit 6 of irq table
+        lda se_irq_table_position
+        and #%01000000
+        eor #%01000000
+        sta se_irq_table_position
+        sta se_irq_builder_position
+        tay
+        
         ; get new values for this frame
-        lda se_irq_table+0  ; first reload value
-        ldx se_irq_table+1  ; first pointer (lo)
-        ldy se_irq_table+2  ; first pointer (hi)
+        lda se_irq_table+1,y  ; first pointer (lo)
+        sta se_irq_ptr + 0
+        lda se_irq_table+2,y  ; first pointer (hi)
+        sta se_irq_ptr + 1
 
         ; prime irq pointer and reload registers
-        stx se_irq_ptr + 0
-        sty se_irq_ptr + 1
+        lda se_irq_table+0,y  ; first reload value
         sta mmc3_IRQ_LATCH
         sta mmc3_IRQ_RELOAD
         sta mmc3_IRQ_ENABLE
 
         lda se_ppu_mask_var
         sta $2001
+        
 
         jsr se_safe_controller_polling
-        cli
+        ; cli   ; will get set in the function above
 
     @skip_all_updates:
 
     inc se_frame_count
-
-    ;reset irq
-
 
     lda __rc2
     pha
@@ -1939,8 +2306,6 @@ MouseBoundsMax:
 
 
 
-
-
 ;;
 ;;  IRQ STUFF
 ;;  need interrupts? this has you covered.
@@ -1956,8 +2321,6 @@ se_run_da_irq:
     pha
     jsr se_run_da_irq
 
-    
-    
     ; prime irq for the next time it fires
     ldx se_irq_table_position
 
@@ -1978,101 +2341,3 @@ se_run_da_irq:
     rti
 .endproc
 
-
-.export se_play_sample
-.proc se_play_sample
-    php
-    sei
-    sta __prg_c000
-    txa
-    pha
-
-    lda #$ad    ; opcode for LDA abs
-    sta $d0
-
-    ; copy to this location
-    lda #$d3
-    ldx #0
-    sta __rc2
-    stx __rc3
-
-    sec
-    sbc #3
-    sta se_irq_table+1
-    stx se_irq_table+2
-
-    dex
-    stx se_irq_table+0
-    
-    ; from this location
-    lda #<funny_pcm_routine+3
-    ldx #>funny_pcm_routine
-    sta __rc4
-    stx __rc5
-
-    ; with this length
-    lda #45
-    ldx #0
-    jsr se_memory_copy
-
-
-    ; set bank
-    lda #%00000110                  ; 25
-    ora __bank_select_hi            ; 27
-    sta $8000                       ; 30
-    lda __prg_c000                  ; 32
-    sta $8001                       ; 35
-
-    ; get playback rate
-    pla
-    tax
-    stx se_irq_table+0
-    inc se_sample_in_progress
-
-    plp
-    rts
-.endproc
-
-.proc se_sample_eof
-    lda #0
-    sta se_sample_in_progress
-    lda #255
-    sta se_irq_table+0
-    rts
-.endproc
-
-.proc funny_pcm_routine
-    .org $00d0  ; 60 bytes to work with
-
-    @load_instruction: lda $c000    ; 3
-    bmi @exit_eof_sample            ; 5
-    sta $4011                       ; 8
-    inc @load_instruction + 1       ; 10
-    beq @inc_high_byte              ; 12
-    rts                             ; 13
-
-    @inc_high_byte:
-    inc @load_instruction + 2       ; 15
-    lda @load_instruction + 2       ; 17
-    cmp #$e0                        ; 19
-    bne @exit                       ; 21
-
-    inc __prg_c000                  ; 23
-
-    lda #%00000110                  ; 25
-    ora __bank_select_hi            ; 27
-    sta $8000                       ; 30
-    lda __prg_c000                  ; 32
-    sta $8001                       ; 35
-    lda #$c0                        ; 37
-    sta @load_instruction + 2       ; 39
-    @exit:
-    rts                             ; 40
-    @exit_eof_sample:
-    jmp se_sample_eof               ; 43
-
-    .reloc
-.endproc
-
-;.align 128
-.include "famistudio_ca65.s"

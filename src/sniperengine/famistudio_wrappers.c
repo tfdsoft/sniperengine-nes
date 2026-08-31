@@ -19,7 +19,7 @@ __attribute__((noinline)) void se_music_play(u8 s){
     set_prg_a000(music_bank_0);
 
     //if(s > 0){
-    if(s == 255) s++;
+    //s++;
     
     __attribute__((leaf)) __asm__ volatile (
 
@@ -54,7 +54,7 @@ __attribute__((noinline)) void se_music_play(u8 s){
 
     __asm__(
         "pla \n"
-        "jsr set_prg_a000 \n"
+        "jmp set_prg_a000 \n"
     );
 }
 
@@ -76,8 +76,8 @@ __attribute__((noinline)) void se_sfx_play(u8 index, u8 channel){
         "lda __prg_a000 \n"
         "pha \n"
     );
-    set_prg_a000(0);
-    famistudio_sfx_init(0xa000);
+    set_prg_a000(sound_test_bank);
+    famistudio_sfx_init(sfx);
     famistudio_sfx_play(index,channel);
     __asm__(
         "pla \n"
