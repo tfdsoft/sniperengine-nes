@@ -57,7 +57,6 @@ mmc3_IRQ_ENABLE  = $e001
     se_palette_pointer_spr: .res 2
 
     se_name_upd_adr:    .res 1
-    ;se_name_upd_enable: .res 1
     se_vram_index:      .res 1
 
     se_joypad:          .res 7
@@ -109,75 +108,77 @@ mmc3_IRQ_ENABLE  = $e001
 
 
 .segment "_pprg__rom__fixed__lo"
+
+;;  
+;;  IDENTITY TABLE
+;;  CAN BE USED TO SPEED UP SOME CALCULATIONS.
+;;  STARTS AT $8000
 ;;
-;; API, USEFUL FOR ROM HACKING
-;; STARTS AT $8000
+;.align 256
+.export se_identity_table
+se_identity_table:
+    .byte $00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0a,$0b,$0c,$0d,$0e,$0f
+    .byte $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$1a,$1b,$1c,$1d,$1e,$1f
+    .byte $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$2a,$2b,$2c,$2d,$2e,$2f
+    .byte $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$3a,$3b,$3c,$3d,$3e,$3f
+    .byte $40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$4a,$4b,$4c,$4d,$4e,$4f
+    .byte $50,$51,$52,$53,$54,$55,$56,$57,$58,$59,$5a,$5b,$5c,$5d,$5e,$5f
+    .byte $60,$61,$62,$63,$64,$65,$66,$67,$68,$69,$6a,$6b,$6c,$6d,$6e,$6f
+    .byte $70,$71,$72,$73,$74,$75,$76,$77,$78,$79,$7a,$7b,$7c,$7d,$7e,$7f
+    .byte $80,$81,$82,$83,$84,$85,$86,$87,$88,$89,$8a,$8b,$8c,$8d,$8e,$8f
+    .byte $90,$91,$92,$93,$94,$95,$96,$97,$98,$99,$9a,$9b,$9c,$9d,$9e,$9f
+    .byte $a0,$a1,$a2,$a3,$a4,$a5,$a6,$a7,$a8,$a9,$aa,$ab,$ac,$ad,$ae,$af
+    .byte $b0,$b1,$b2,$b3,$b4,$b5,$b6,$b7,$b8,$b9,$ba,$bb,$bc,$bd,$be,$bf
+    .byte $c0,$c1,$c2,$c3,$c4,$c5,$c6,$c7,$c8,$c9,$ca,$cb,$cc,$cd,$ce,$cf
+    .byte $d0,$d1,$d2,$d3,$d4,$d5,$d6,$d7,$d8,$d9,$da,$db,$dc,$dd,$de,$df
+    .byte $e0,$e1,$e2,$e3,$e4,$e5,$e6,$e7,$e8,$e9,$ea,$eb,$ec,$ed,$ee,$ef
+    .byte $f0,$f1,$f2,$f3,$f4,$f5,$f6,$f7,$f8,$f9,$fa,$fb,$fc,$fd,$fe,$ff
+    
+.export se_sine_table
+se_sine_table:
+    .byte $80,$83,$86,$89,$8c,$8f,$92,$95,$98,$9b,$9e,$a2,$a5,$a7,$aa,$ad
+    .byte $b0,$b3,$b6,$b9,$bc,$be,$c1,$c4,$c6,$c9,$cb,$ce,$d0,$d3,$d5,$d7
+    .byte $da,$dc,$de,$e0,$e2,$e4,$e6,$e8,$ea,$eb,$ed,$ee,$f0,$f1,$f3,$f4
+    .byte $f5,$f6,$f8,$f9,$fa,$fa,$fb,$fc,$fd,$fd,$fe,$fe,$fe,$ff,$ff,$ff
+    .byte $ff,$ff,$ff,$ff,$fe,$fe,$fe,$fd,$fd,$fc,$fb,$fa,$fa,$f9,$f8,$f6
+    .byte $f5,$f4,$f3,$f1,$f0,$ee,$ed,$eb,$ea,$e8,$e6,$e4,$e2,$e0,$de,$dc
+    .byte $da,$d7,$d5,$d3,$d0,$ce,$cb,$c9,$c6,$c4,$c1,$be,$bc,$b9,$b6,$b3
+    .byte $b0,$ad,$aa,$a7,$a5,$a2,$9e,$9b,$98,$95,$92,$8f,$8c,$89,$86,$83
+    .byte $80,$7c,$79,$76,$73,$70,$6d,$6a,$67,$64,$61,$5d,$5a,$58,$55,$52
+    .byte $4f,$4c,$49,$46,$43,$41,$3e,$3b,$39,$36,$34,$31,$2f,$2c,$2a,$28
+    .byte $25,$23,$21,$1f,$1d,$1b,$19,$17,$15,$14,$12,$11,$0f,$0e,$0c,$0b
+    .byte $0a,$09,$07,$06,$05,$05,$04,$03,$02,$02,$01,$01,$01,$00,$00,$00
+    .byte $00,$00,$00,$00,$01,$01,$01,$02,$02,$03,$04,$05,$05,$06,$07,$09
+    .byte $0a,$0b,$0c,$0e,$0f,$11,$12,$14,$15,$17,$19,$1b,$1d,$1f,$21,$23
+    .byte $25,$28,$2a,$2c,$2f,$31,$34,$36,$39,$3b,$3e,$41,$43,$46,$49,$4c
+    .byte $4f,$52,$55,$58,$5a,$5d,$61,$64,$67,$6a,$6d,$70,$73,$76,$79,$7c
+;;  
+;;  PALETTE BRIGHTNESS TABLE
+;;  STARTS AT $8200
 ;;
+se_palette_brightness_table:
+    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;0
+    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;1
+    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;2
+    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;3
+    
+    .byte $00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0a,$0b,$0c,$0d,$0e,$0f ;4
 
-;; init
-jmp se_init
+    .byte $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$1a,$1b,$1c,$1d,$1e,$00 ;5
 
-;; nmi
-jmp disable_nmi
-jmp enable_nmi
+    .byte $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$2a,$2b,$2c,$2d,$2e,$10 ;6
 
-;; mmc3 functions
-jmp set_prg_a000
-jmp set_prg_c000
-;jmp banked_call_a000
-jmp set_chr_bank
-jmp jsrfar
+    .byte $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$3a,$3b,$3c,$3d,$3f,$20 ;7
 
-;; vram functions
-;.align 8
-jmp se_vram_unrle
-jmp se_vram_donut_decompress
+    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30 ;8
+    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
+    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
+    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
 
-;; ppu functions
-;.align 8
-jmp se_wait_vsync
-jmp se_wait_frames
-jmp se_turn_off_rendering
-jmp se_turn_on_rendering
 
-jmp se_set_palette_background
-jmp se_set_palette_sprites
-jmp se_set_palette_all
-jmp se_set_palette_color
 
-jmp se_set_palette_brightness_background
-jmp se_set_palette_brightness_sprites
-jmp se_set_palette_brightness_all
-
-jmp se_fade_palette_to
-jmp se_clear_palette
-
-;; oam stuff
-jmp se_clear_sprites
-jmp se_draw_sprite
-jmp se_draw_metasprite
-
-;; vram buffer
-;.align 8
-;jmp se_set_vram_update  ; not needed
-jmp se_set_vram_buffer
-
-jmp se_one_vram_buffer
-jmp se_string_vram_buffer
-
-;; memory stuff
-;.align 8
-jmp se_memory_fill
-jmp se_memory_copy
-
-;; music stuff
-;.align 8
-.import se_music_play,se_sfx_play,se_music_update
-jmp se_music_play   
-jmp se_sfx_play 
-jmp se_music_update 
-jmp famistudio_music_stop
-jmp famistudio_music_pause
+.export nofunction
+nofunction = se_identity_table+$60
 
 ;;
 ;;  INIT
@@ -222,62 +223,6 @@ jmp famistudio_music_pause
     rts
 .endproc
 
-;;  
-;;  IDENTITY TABLE
-;;  CAN BE USED TO SPEED UP SOME CALCULATIONS.
-;;  STARTS AT $8100
-;;
-.align 256
-.export se_identity_table
-se_identity_table:
-    .byte $00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0a,$0b,$0c,$0d,$0e,$0f
-    .byte $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$1a,$1b,$1c,$1d,$1e,$1f
-    .byte $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$2a,$2b,$2c,$2d,$2e,$2f
-    .byte $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$3a,$3b,$3c,$3d,$3e,$3f
-    .byte $40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$4a,$4b,$4c,$4d,$4e,$4f
-    .byte $50,$51,$52,$53,$54,$55,$56,$57,$58,$59,$5a,$5b,$5c,$5d,$5e,$5f
-    .byte $60,$61,$62,$63,$64,$65,$66,$67,$68,$69,$6a,$6b,$6c,$6d,$6e,$6f
-    .byte $70,$71,$72,$73,$74,$75,$76,$77,$78,$79,$7a,$7b,$7c,$7d,$7e,$7f
-    .byte $80,$81,$82,$83,$84,$85,$86,$87,$88,$89,$8a,$8b,$8c,$8d,$8e,$8f
-    .byte $90,$91,$92,$93,$94,$95,$96,$97,$98,$99,$9a,$9b,$9c,$9d,$9e,$9f
-    .byte $a0,$a1,$a2,$a3,$a4,$a5,$a6,$a7,$a8,$a9,$aa,$ab,$ac,$ad,$ae,$af
-    .byte $b0,$b1,$b2,$b3,$b4,$b5,$b6,$b7,$b8,$b9,$ba,$bb,$bc,$bd,$be,$bf
-    .byte $c0,$c1,$c2,$c3,$c4,$c5,$c6,$c7,$c8,$c9,$ca,$cb,$cc,$cd,$ce,$cf
-    .byte $d0,$d1,$d2,$d3,$d4,$d5,$d6,$d7,$d8,$d9,$da,$db,$dc,$dd,$de,$df
-    .byte $e0,$e1,$e2,$e3,$e4,$e5,$e6,$e7,$e8,$e9,$ea,$eb,$ec,$ed,$ee,$ef
-    .byte $f0,$f1,$f2,$f3,$f4,$f5,$f6,$f7,$f8,$f9,$fa,$fb,$fc,$fd,$fe,$ff
-
-
-;;  
-;;  PALETTE BRIGHTNESS TABLE
-;;  CAN BE USED TO SPEED UP SOME CALCULATIONS.
-;;  STARTS AT $8200
-;;
-;.align 256
-se_palette_brightness_table:
-    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;0
-    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;1
-    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;2
-    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;3
-    
-    .byte $00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0a,$0b,$0c,$0d,$0e,$0f ;4
-
-    .byte $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$1a,$1b,$1c,$1d,$1e,$00 ;5
-
-    .byte $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$2a,$2b,$2c,$2d,$2e,$10 ;6
-
-    .byte $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$3a,$3b,$3c,$3d,$3f,$20 ;7
-
-    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30 ;8
-    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
-    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
-    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
-
-
-
-.export nofunction
-nofunction = se_identity_table+$60
-
 ;;
 ;;  OAM DMA SHENANIGANS
 ;;  ok so basically, controller reads aligned to OAM DMA
@@ -286,7 +231,7 @@ MouseBoundsMin:
     .byte 1,1
 MouseBoundsMax:
     .byte 254,239
-.align 32  ; as long as access loops aren't on a page
+;.align 32  ; as long as access loops aren't on a page
             ; boundary this *should* run fine
 .export se_safe_controller_polling
 .proc se_safe_controller_polling
@@ -1736,17 +1681,7 @@ __exit_vram_buffer_noupdate:
 
         bvs @update_horizontal_sequence
         bmi @update_vertical_sequence
-        ;bvc @update_single_tile
-        ;cmp #$40
-        ;bcc @update_single_tile
 
-        ;not horizontal? save upper address byte for arithmetic
-        ;tax
-        ;lda se_ppu_ctrl_var
-        ;cpx #$80
-        ;bmi @update_horizontal_sequence
-        ;cpx #$ff
-        ;beq @exit
     @update_single_tile:
         sta $2006
         pla
@@ -1778,15 +1713,7 @@ __exit_vram_buffer_noupdate:
         bmi @update_repeated_byte
 
         tax
-    ;@update_common_sequence_loop:
-        ;pla
-        ;sta $2007
-        ;dex
-        ;bne @update_common_sequence_loop
-
-        ;; larger overhead, but the fastest possible writes
-        ;tax
-        ;lda the_funny_fours_table_lmao,x
+    
         asl
         asl
         tay
@@ -1913,61 +1840,6 @@ __exit_vram_buffer_noupdate:
     bne @3
     @4:
     rts
-
-    
-    ;pha
-    ;ldy __rc2 ; save low byte of memory ptr
-    ;lda #0
-    ;sta __rc2 ; write 0 to low byte to save cycles later
-
-    ;; is the pointer in the $2xxx region? (likely ppu_data)
-    ;lda __rc3
-    ;and #$f0 ; mask off the lower four bits
-    ;cmp #$20
-    ;beq @no_inc_pointer
-    
-    ;pla
-
-    ;; decrement x by one
-    ;dex
-    ;cpx #$ff
-    ;bne @inc_loop
-    ;dec __rc4
-
-    ;@inc_loop:
-    ;    sta (__rc2),y 
-    ;    iny
-    ;    bne :+ ; inc pointer
-    ;    inc __rc3
-    ;    : 
-    ;    dex
-    ;    bne @inc_loop
-    
-    ;@il_is_remaining_length_zero:
-    ;    cpx __rc4 ; x should be zero here
-    ;    beq @done
-    ;    dec __rc4
-    ;    jmp @inc_loop
-
-
-    ;@no_inc_pointer:
-    ;pla
-
-    ;@no_inc_loop:
-    ;    sta $2007 ; using indexed instructions breaks it :sob: 
-    ;    dex
-    ;    bne @no_inc_loop
-
-    ;@nil_is_remaining_length_zero:
-    ;    cpx __rc4
-    ;    beq @done
-    ;    dec __rc4
-    ;    jmp @no_inc_loop
-
-    ;@done:
-    ;rts
-        
-
 .endproc
 
 ; memcpy(*to, *from, numBytes);
@@ -2070,16 +1942,6 @@ __exit_vram_buffer_noupdate:
     ;sta __rc5
     rts
 .endproc
-
-
-
-;;
-;;  MUSIC STUFF
-;;  music and sound effects, powered by FamiStudio!
-;;
-    
-    ; see the header file
-
 
 
 
@@ -2188,9 +2050,9 @@ __exit_vram_buffer_noupdate:
         ; flip bit 6 of irq table
         lda se_irq_table_position
         and #%01000000
+        sta se_irq_builder_position
         eor #%01000000
         sta se_irq_table_position
-        sta se_irq_builder_position
         tay
         
         ; get new values for this frame
@@ -2310,17 +2172,19 @@ __exit_vram_buffer_noupdate:
 ;;  IRQ STUFF
 ;;  need interrupts? this has you covered.
 ;;
-se_run_da_irq:
-    jmp (se_irq_ptr)
-
 .export irq
 .proc irq
     sta mmc3_IRQ_DISABLE
     pha
+    jmp (se_irq_ptr)
+
+.endproc
+
+.export irq_exit, irq_exit_no_preserve_x 
+irq_exit:
     txa
     pha
-    jsr se_run_da_irq
-
+irq_exit_no_preserve_x:
     ; prime irq for the next time it fires
     ldx se_irq_table_position
 
@@ -2339,5 +2203,76 @@ se_run_da_irq:
     pla
     
     rti
-.endproc
+
+
+
+;;
+;; API, USEFUL FOR ROM HACKING
+;; STARTS AT $8000
+;;
+.align 16
+;; init
+jmp se_init
+
+;; nmi
+jmp disable_nmi
+jmp enable_nmi
+
+;; mmc3 functions
+jmp set_prg_a000
+jmp set_prg_c000
+;jmp banked_call_a000
+jmp set_chr_bank
+jmp jsrfar
+
+;; vram functions
+;.align 8
+jmp se_vram_unrle
+jmp se_vram_donut_decompress
+
+;; ppu functions
+;.align 8
+jmp se_wait_vsync
+jmp se_wait_frames
+jmp se_turn_off_rendering
+jmp se_turn_on_rendering
+
+jmp se_set_palette_background
+jmp se_set_palette_sprites
+jmp se_set_palette_all
+jmp se_set_palette_color
+
+jmp se_set_palette_brightness_background
+jmp se_set_palette_brightness_sprites
+jmp se_set_palette_brightness_all
+
+jmp se_fade_palette_to
+jmp se_clear_palette
+
+;; oam stuff
+jmp se_clear_sprites
+jmp se_draw_sprite
+jmp se_draw_metasprite
+
+;; vram buffer
+;.align 8
+;jmp se_set_vram_update  ; not needed
+jmp se_set_vram_buffer
+
+jmp se_one_vram_buffer
+jmp se_string_vram_buffer
+
+;; memory stuff
+;.align 8
+jmp se_memory_fill
+jmp se_memory_copy
+
+;; music stuff
+;.align 8
+.import se_music_play,se_sfx_play,se_music_update
+jmp se_music_play   
+jmp se_sfx_play 
+jmp se_music_update 
+jmp famistudio_music_stop
+jmp famistudio_music_pause
 

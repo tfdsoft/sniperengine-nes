@@ -1,5 +1,5 @@
 {
-	songModule: "music_master_except_its_new!!!!.fms",
+	songModule: "famidash_epsm.fms",
 	songs: [
 		/*{
 			fmsSongName: "Menu Theme",
@@ -38,7 +38,7 @@
 			coveringArtistText: "CRAFTY JUMPER",
 		},
 		{
-			fmsSongName: "Practice",
+			fmsSongName: "Stay Inside Me",
 			lowerText: "STAY INSIDE ME",
 			originalArtistText: "OCULARNEBULA",
 			coveringArtistText: "USERSNIPER",
@@ -50,7 +50,7 @@
 			coveringArtistText: "USERSNIPER",
 		},*/
 		{
-			fmsSongName: "Casual Game Music 09",
+			fmsSongName: "Stay Inside Me",
 			lowerText: "DESERT CITY",
 			originalArtistText: "KEVIN MACLEOD",
 			coveringArtistText: "USERSNIPER",

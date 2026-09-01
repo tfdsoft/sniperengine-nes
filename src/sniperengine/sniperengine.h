@@ -73,7 +73,7 @@ extern u8 __prg_8000, __prg_a000, __bank_select_hi;
 extern void* se_post_nmi_ptr;
 extern void* se_irq_ptr;
 extern u8 se_irq_table[128], se_irq_table_position, se_irq_builder_position;
-extern const u8 se_identity_table[256];
+extern const u8 se_identity_table[256], se_sine_table[256];
 
 struct pad {
     union {

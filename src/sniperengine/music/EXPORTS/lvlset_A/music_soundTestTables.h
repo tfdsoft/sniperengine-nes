@@ -38,7 +38,7 @@ const u8 xbgmtextsOriginalArtistSize[] = {};
 #if !__VS_SYSTEM
 
 banked(sound_test_bank.musictext.index) const u8 xbgmlookuptable[] = {
-	song_casual_game_music_09,
+	song_stay_inside_me,
 };
 
 #else

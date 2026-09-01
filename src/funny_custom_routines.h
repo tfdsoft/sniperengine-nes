@@ -9,3 +9,4 @@
 
 // IRQ ONLY: DO NOT CALL
 void custom_irq_that_updates_scroll();
+void custom_irq_that_does_sine_scroll();

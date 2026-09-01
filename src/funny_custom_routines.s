@@ -9,6 +9,8 @@ custom_irq_that_updates_scroll:
     ; +5 = Y (lo)
     ; +6 = Y (hi)
     
+    txa
+    pha
     tya
     pha
 
@@ -67,4 +69,47 @@ custom_irq_that_updates_scroll:
     ; restore Y
     pla
     tay
-    rts
+    jmp irq_exit_no_preserve_x
+
+
+
+
+.section .text.custom_irq_that_does_sine_scroll,"ax",@progbits
+.global custom_irq_that_does_sine_scroll
+custom_irq_that_does_sine_scroll:
+    ; +3 = start position
+    ; +4 = intensity
+    ; +5 = times run thus far
+    txa
+    pha
+
+
+    ldx se_irq_table_position
+
+    ; increment times run by intensity
+    lda se_irq_table + 5, x
+    clc
+    adc se_irq_table + 4, x 
+    sta se_irq_table + 5, x
+
+    adc se_irq_table + 3, x
+    ;lda se_irq_table + 5, x
+    tax
+
+    lda se_sine_table, x
+    lsr
+    lsr
+    lsr
+    lsr
+
+    sta $2005
+    sta $2005
+
+
+
+    ;lda se_irq_table_position
+    ;clc
+    ;adc #5
+    ;sta se_irq_table_position
+
+    jmp irq_exit_no_preserve_x
