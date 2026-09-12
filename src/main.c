@@ -1,18 +1,24 @@
 // the lifeblood of the engine. don't remove these lines.
 #include <nes.h>
 
-
+// sniperengine data
 #include "sniperengine/sniperengine.h"
 #include "ines_header.h"
 #include "assets.c"
+
+// ram
 #include "ram.h"
 
+// music data
 #include "musicBankData.h"
 #include "music/EXPORTS/sfx.h"
 
+// assembly passthroughs
 #include "./funny_custom_routines.h"
 
-#include "state_startup.c"
+// gamestates
+#include "startup.c"
+#include "greet_message.c"
 
 
 banked(fixed.main) int main(void) {

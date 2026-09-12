@@ -1323,11 +1323,13 @@ donut_stream_ptr = $02
         eor #%11100000
         sta se_ppu_mask_var
         jsr se_wait_vsync ;wait 4 frames
+        jsr se_wait_vsync
 
         lda se_ppu_mask_var
         eor #%11100000
         sta se_ppu_mask_var
         jsr se_wait_vsync ;wait 4 frames
+        jsr se_wait_vsync
 
         lda __rc21 ;from
         cmp __rc20 ;to
