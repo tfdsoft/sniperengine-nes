@@ -3,30 +3,12 @@
  *  customize your ROM configuration.
 **============================================*/
 
-// Sound Test Bank =============================
-#define sound_test_bank 0
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /*==============================================
  *  You shouldn't have to touch anything
  *  below this point.
 **============================================*/
+
+#include <nes.h>
 
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -225,21 +207,13 @@ void se_irq_table_add_word(u16 word){
 }
 
 
-// == the compiler/linker figures these out ==
-#include "musicDefines.h"
-#include "musicBankData.h"
-#include "music_soundTestTables.h"
-#include "sfx_soundTestTables.h"
-// ===========================================
-#include "music/EXPORTS/sfx.h"
-
 
 #include "famistudio_wrappers.c"
 __asm__ (
     ".section .prg_rom_fixed_lo.famistudio_dpcm_bank_callback \n"
     "famistudio_dpcm_bank_callback: \n"
     "clc \n"
-    "adc #"STR(dpcm_bank_0)" \n"
+    "adc se_first_dpcm_bank \n"
     "jmp set_prg_8000 \n"
     ".globl famistudio_dpcm_bank_callback \n"
 );

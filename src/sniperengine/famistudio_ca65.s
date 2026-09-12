@@ -4392,7 +4392,7 @@ famistudio_update:
 ;!!! FAMISTUDIO DRIVER MODIFICATION BEGIN
 ;*  MODIFIED
     ;.import set_prg_a000
-    LDA #0
+    LDA se_sfx_bank
     JSR set_prg_a000
 ;!!! FAMISTUDIO DRIVER MODIFICATION END
 

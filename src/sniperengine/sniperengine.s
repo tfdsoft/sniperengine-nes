@@ -100,8 +100,12 @@ mmc3_IRQ_ENABLE  = $e001
 
     se_vram_tmp_stack_pointer:  .res 1
 
-    se_music_bank:      .res 1
-    .export se_music_bank
+    se_first_music_bank:    .res 1
+    se_first_dpcm_bank:     .res 1
+    se_current_music_bank:  .res 1
+    se_sfx_bank:        .res 1
+    .export se_first_music_bank, se_first_dpcm_bank, se_current_music_bank 
+    .export se_sfx_bank 
 
     se_vram_buffer = $100   ;DONUT BUFFER IS ALSO HERE!!!!
 

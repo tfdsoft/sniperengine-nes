@@ -1,8 +1,21 @@
 #include "famistudio_llvmmos.h"
 
-extern u8 se_music_bank;
+extern u8 se_first_music_bank, se_first_dpcm_bank, se_current_music_bank;
+extern u8 se_sfx_bank;
 
-__attribute__((noinline)) void se_music_play(u8 s){
+__attribute__((retain)) void se_set_first_music_bank(u8 bank){
+    se_first_music_bank = bank;
+}
+__attribute__((retain)) void se_set_first_dpcm_bank(u8 bank){
+    se_first_dpcm_bank = bank;
+}
+
+__attribute__((retain)) void se_set_sfx_bank(u8 bank){
+    se_sfx_bank = bank;
+}
+
+
+__attribute__((noinline, retain)) void se_music_play(u8 s){
     
     //push_prg_a000();
     __asm__(
@@ -16,7 +29,7 @@ __attribute__((noinline)) void se_music_play(u8 s){
 
     // ok so we need to figure out what bank the
     // requested song is in.
-    set_prg_a000(music_bank_0);
+    set_prg_a000(se_first_music_bank);
 
     //if(s > 0){
     //s++;
@@ -44,7 +57,7 @@ __attribute__((noinline)) void se_music_play(u8 s){
             "pla \n"
             "ldx __prg_a000 \n"
 
-        :"=a"(song_count),"=x"(se_music_bank)
+        :"=a"(song_count),"=x"(se_current_music_bank)
         :"a"(s)
         :"y","p"
     );
@@ -58,30 +71,30 @@ __attribute__((noinline)) void se_music_play(u8 s){
     );
 }
 
-__attribute__((noinline)) void se_music_update(){
+__attribute__((noinline, retain)) void se_music_update(){
     __asm__(
         "lda __prg_a000 \n"
         "pha \n"
     );
-    set_prg_a000(se_music_bank);
+    set_prg_a000(se_current_music_bank);
     famistudio_update();
     __asm__(
         "pla \n"
-        "jsr set_prg_a000 \n"
+        "jmp set_prg_a000 \n"
     );
 }
 
-__attribute__((noinline)) void se_sfx_play(u8 index, u8 channel){
+__attribute__((noinline, retain)) void se_sfx_play(u8 index, u8 channel){
     __asm__(
         "lda __prg_a000 \n"
         "pha \n"
     );
-    set_prg_a000(sound_test_bank);
-    famistudio_sfx_init(sfx);
+    set_prg_a000(se_sfx_bank);
+    famistudio_sfx_init(0xa000);
     famistudio_sfx_play(index,channel);
     __asm__(
         "pla \n"
-        "jsr set_prg_a000 \n"
+        "jmp set_prg_a000 \n"
     );
 }
 

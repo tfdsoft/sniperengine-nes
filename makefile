@@ -107,13 +107,12 @@ $(TMPDIR):
 	$(call mkdir,$(TMPDIR))
 
 
-$(TMPDIR)/sfx.o: src/sniperengine/music/*.s
-	$(CA65) src/sniperengine/music/music_assets.s -o $@
+$(TMPDIR)/sfx.o: src/music/*.s
+	$(CA65) src/music/music_assets.s -o $@
 
-$(TMPDIR)/music.o: src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/music_bank*.dmc src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/music_*.s src/sniperengine/NoteTables/*.* 
+$(TMPDIR)/music.o: src/music/EXPORTS/lvlset_$(LEVELSET)/music_bank*.dmc src/music/EXPORTS/lvlset_$(LEVELSET)/music_*.s src/sniperengine/NoteTables/*.* 
 #	compile all of the music assets into one giant object file
-	$(CA65) src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/music_data_header.s -o $@
-
+	$(CA65) src/music/EXPORTS/lvlset_$(LEVELSET)/music_data_header.s -o $@
 
 # custom assembly code (not to be put in .prg_rom_fixed_lo)
 $(TMPDIR)/asm.o: src/*.s
@@ -125,9 +124,9 @@ $(TMPDIR)/asm.o: src/*.s
 $(TMPDIR)/sniperengine.o: src/sniperengine/THE_FUCKING_INCLUDE.s 
 	$(CA65) src/sniperengine/THE_FUCKING_INCLUDE.s -o $@
 
-$(OUTDIR)/$(NAME).nes: $(OUTDIR) $(TMPDIR)/sniperengine.o $(TMPDIR)/music.o $(TMPDIR)/sfx.o $(TMPDIR)/asm.o src/*.h src/*.c src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)/*.h $(CFG)
+$(OUTDIR)/$(NAME).nes: $(OUTDIR) $(TMPDIR)/sniperengine.o $(TMPDIR)/music.o $(TMPDIR)/sfx.o $(TMPDIR)/asm.o src/*.h src/*.c src/music/EXPORTS/lvlset_$(LEVELSET)/*.h $(CFG)
 	python3 src/chr/donut.py src/chr/uncompressed/ src/chr/dnt -f
-	$(CC) src/main.c $(TMPDIR)/*.o $(call cc65IncDir,src/sniperengine/music/EXPORTS/lvlset_$(LEVELSET)) $(CFLAGS) $(LDFLAGS) -o $@
+	$(CC) src/main.c $(TMPDIR)/*.o $(call cc65IncDir,src/music/EXPORTS/lvlset_$(LEVELSET)) $(CFLAGS) $(LDFLAGS) -o $@
 
 
 clean:

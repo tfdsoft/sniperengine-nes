@@ -7,6 +7,9 @@
 #include "assets.c"
 #include "ram.h"
 
+#include "musicBankData.h"
+#include "music/EXPORTS/sfx.h"
+
 #include "./funny_custom_routines.h"
 
 #include "state_startup.c"
@@ -18,8 +21,12 @@ banked(fixed.main) int main(void) {
     PPU.status;
     se_init(0x80);
 
-    set_prg_a000(music_bank_0);
+    se_set_first_music_bank(music_bank_0);
+    se_set_first_dpcm_bank(dpcm_bank_0);
+    se_set_sfx_bank(0);
     famistudio_init(1,0xa000);
+
+    se_sfx_play(0,0);
 
     se_post_nmi_ptr = se_music_update;
 
