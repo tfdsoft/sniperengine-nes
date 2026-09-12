@@ -116,7 +116,7 @@ struct pad {
 extern struct pad joypad1;
 extern struct pad joypad2;
 
-__attribute__((leaf)) void se_init(u8 A12_invert);
+__attribute__((leaf)) void se_init();
 __attribute__((leaf)) void nofunction();
 
 __attribute__((leaf)) void disable_nmi();
@@ -194,14 +194,14 @@ __attribute__((leaf)) void se_memory_copy(void* to, void* from, u16 length);
     "sta se_irq_table + "STR(index)"+1 \n" \
 )*/
 
-void se_irq_table_add_function(void* ptr){
+__attribute__((always_inline)) void se_irq_table_add_function(void* ptr){
     se_irq_table[se_irq_builder_position++] = lo(ptr); 
     se_irq_table[se_irq_builder_position++] = hi(ptr); 
 }
-void se_irq_table_add_byte(u8 byte){
+__attribute__((always_inline)) void se_irq_table_add_byte(u8 byte){
     se_irq_table[se_irq_builder_position++] = byte;
 }
-void se_irq_table_add_word(u16 word){
+__attribute__((always_inline)) void se_irq_table_add_word(u16 word){
     se_irq_table[se_irq_builder_position++] = lo(word);
     se_irq_table[se_irq_builder_position++] = hi(word);
 }
@@ -209,11 +209,3 @@ void se_irq_table_add_word(u16 word){
 
 
 #include "famistudio_wrappers.c"
-__asm__ (
-    ".section .prg_rom_fixed_lo.famistudio_dpcm_bank_callback \n"
-    "famistudio_dpcm_bank_callback: \n"
-    "clc \n"
-    "adc se_first_dpcm_bank \n"
-    "jmp set_prg_8000 \n"
-    ".globl famistudio_dpcm_bank_callback \n"
-);

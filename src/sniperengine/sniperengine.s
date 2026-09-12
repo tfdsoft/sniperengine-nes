@@ -56,6 +56,10 @@ mmc3_IRQ_ENABLE  = $e001
     se_palette_pointer_bg:  .res 2
     se_palette_pointer_spr: .res 2
 
+    se_ppu_mask_var:    .res 1
+    se_ppu_ctrl_var:    .res 1
+    .export se_ppu_ctrl_var, se_ppu_mask_var 
+
     se_name_upd_adr:    .res 1
     se_vram_index:      .res 1
 
@@ -79,10 +83,6 @@ mmc3_IRQ_ENABLE  = $e001
 
     se_frame_count:     .res 1
     .export se_frame_count
-
-    se_ppu_mask_var:    .res 1
-    se_ppu_ctrl_var:    .res 1
-    .export se_ppu_ctrl_var, se_ppu_mask_var 
 
     se_scroll_x:        .res 2
     se_scroll_y:        .res 2
@@ -113,76 +113,71 @@ mmc3_IRQ_ENABLE  = $e001
 
 .segment "_pprg__rom__fixed__lo"
 
-;;  
-;;  IDENTITY TABLE
-;;  CAN BE USED TO SPEED UP SOME CALCULATIONS.
-;;  STARTS AT $8000
 ;;
-;.align 256
-.export se_identity_table
-se_identity_table:
-    .byte $00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0a,$0b,$0c,$0d,$0e,$0f
-    .byte $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$1a,$1b,$1c,$1d,$1e,$1f
-    .byte $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$2a,$2b,$2c,$2d,$2e,$2f
-    .byte $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$3a,$3b,$3c,$3d,$3e,$3f
-    .byte $40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$4a,$4b,$4c,$4d,$4e,$4f
-    .byte $50,$51,$52,$53,$54,$55,$56,$57,$58,$59,$5a,$5b,$5c,$5d,$5e,$5f
-    .byte $60,$61,$62,$63,$64,$65,$66,$67,$68,$69,$6a,$6b,$6c,$6d,$6e,$6f
-    .byte $70,$71,$72,$73,$74,$75,$76,$77,$78,$79,$7a,$7b,$7c,$7d,$7e,$7f
-    .byte $80,$81,$82,$83,$84,$85,$86,$87,$88,$89,$8a,$8b,$8c,$8d,$8e,$8f
-    .byte $90,$91,$92,$93,$94,$95,$96,$97,$98,$99,$9a,$9b,$9c,$9d,$9e,$9f
-    .byte $a0,$a1,$a2,$a3,$a4,$a5,$a6,$a7,$a8,$a9,$aa,$ab,$ac,$ad,$ae,$af
-    .byte $b0,$b1,$b2,$b3,$b4,$b5,$b6,$b7,$b8,$b9,$ba,$bb,$bc,$bd,$be,$bf
-    .byte $c0,$c1,$c2,$c3,$c4,$c5,$c6,$c7,$c8,$c9,$ca,$cb,$cc,$cd,$ce,$cf
-    .byte $d0,$d1,$d2,$d3,$d4,$d5,$d6,$d7,$d8,$d9,$da,$db,$dc,$dd,$de,$df
-    .byte $e0,$e1,$e2,$e3,$e4,$e5,$e6,$e7,$e8,$e9,$ea,$eb,$ec,$ed,$ee,$ef
-    .byte $f0,$f1,$f2,$f3,$f4,$f5,$f6,$f7,$f8,$f9,$fa,$fb,$fc,$fd,$fe,$ff
-    
-.export se_sine_table
-se_sine_table:
-    .byte $80,$83,$86,$89,$8c,$8f,$92,$95,$98,$9b,$9e,$a2,$a5,$a7,$aa,$ad
-    .byte $b0,$b3,$b6,$b9,$bc,$be,$c1,$c4,$c6,$c9,$cb,$ce,$d0,$d3,$d5,$d7
-    .byte $da,$dc,$de,$e0,$e2,$e4,$e6,$e8,$ea,$eb,$ed,$ee,$f0,$f1,$f3,$f4
-    .byte $f5,$f6,$f8,$f9,$fa,$fa,$fb,$fc,$fd,$fd,$fe,$fe,$fe,$ff,$ff,$ff
-    .byte $ff,$ff,$ff,$ff,$fe,$fe,$fe,$fd,$fd,$fc,$fb,$fa,$fa,$f9,$f8,$f6
-    .byte $f5,$f4,$f3,$f1,$f0,$ee,$ed,$eb,$ea,$e8,$e6,$e4,$e2,$e0,$de,$dc
-    .byte $da,$d7,$d5,$d3,$d0,$ce,$cb,$c9,$c6,$c4,$c1,$be,$bc,$b9,$b6,$b3
-    .byte $b0,$ad,$aa,$a7,$a5,$a2,$9e,$9b,$98,$95,$92,$8f,$8c,$89,$86,$83
-    .byte $80,$7c,$79,$76,$73,$70,$6d,$6a,$67,$64,$61,$5d,$5a,$58,$55,$52
-    .byte $4f,$4c,$49,$46,$43,$41,$3e,$3b,$39,$36,$34,$31,$2f,$2c,$2a,$28
-    .byte $25,$23,$21,$1f,$1d,$1b,$19,$17,$15,$14,$12,$11,$0f,$0e,$0c,$0b
-    .byte $0a,$09,$07,$06,$05,$05,$04,$03,$02,$02,$01,$01,$01,$00,$00,$00
-    .byte $00,$00,$00,$00,$01,$01,$01,$02,$02,$03,$04,$05,$05,$06,$07,$09
-    .byte $0a,$0b,$0c,$0e,$0f,$11,$12,$14,$15,$17,$19,$1b,$1d,$1f,$21,$23
-    .byte $25,$28,$2a,$2c,$2f,$31,$34,$36,$39,$3b,$3e,$41,$43,$46,$49,$4c
-    .byte $4f,$52,$55,$58,$5a,$5d,$61,$64,$67,$6a,$6d,$70,$73,$76,$79,$7c
-;;  
-;;  PALETTE BRIGHTNESS TABLE
-;;  STARTS AT $8200
+;; API, USEFUL FOR ROM HACKING
+;; STARTS AT $8000
 ;;
-se_palette_brightness_table:
-    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;0
-    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;1
-    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;2
-    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;3
-    
-    .byte $00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0a,$0b,$0c,$0d,$0e,$0f ;4
 
-    .byte $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$1a,$1b,$1c,$1d,$1e,$00 ;5
+;; init
+jmp se_init
 
-    .byte $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$2a,$2b,$2c,$2d,$2e,$10 ;6
+;; nmi
+jmp disable_nmi
+jmp enable_nmi
 
-    .byte $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$3a,$3b,$3c,$3d,$3f,$20 ;7
+;; mmc3 functions
+jmp set_prg_a000
+jmp set_prg_c000
+jmp set_chr_bank
+jmp jsrfar
 
-    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30 ;8
-    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
-    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
-    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
+;; vram functions
+jmp se_vram_unrle
+jmp se_vram_donut_decompress
+
+;; ppu functions
+jmp se_wait_vsync
+jmp se_wait_frames
+jmp se_turn_off_rendering
+jmp se_turn_on_rendering
+
+jmp se_set_palette_background
+jmp se_set_palette_sprites
+jmp se_set_palette_all
+jmp se_set_palette_color
+
+jmp se_set_palette_brightness_background
+jmp se_set_palette_brightness_sprites
+jmp se_set_palette_brightness_all
+
+jmp se_fade_palette_to
+jmp se_clear_palette
+
+;; oam stuff
+jmp se_clear_sprites
+jmp se_draw_sprite
+jmp se_draw_metasprite
+
+;; vram buffer
+;jmp se_set_vram_update  ; not needed
+jmp se_set_vram_buffer
+
+jmp se_one_vram_buffer
+jmp se_string_vram_buffer
+
+;; memory stuff
+jmp se_memory_fill
+jmp se_memory_copy
+
+;; music stuff
+.import se_music_play,se_sfx_play,se_music_update
+jmp se_music_play   
+jmp se_sfx_play 
+jmp se_music_update 
+jmp famistudio_music_stop
+jmp famistudio_music_pause
 
 
-
-.export nofunction
-nofunction = se_identity_table+$60
 
 ;;
 ;;  INIT
@@ -190,10 +185,7 @@ nofunction = se_identity_table+$60
 ;;
 .export se_init
 .proc se_init
-    and #%00000001 ; just the zeroth bit.
-    ror 
-    ror ; now its the seventh! 
-    ora __bank_select_hi
+    lda #$c0
     sta __bank_select_hi
 
     ; set post-nmi pointer
@@ -226,6 +218,147 @@ nofunction = se_identity_table+$60
 
     rts
 .endproc
+
+
+.export disable_nmi
+.proc disable_nmi
+    lda se_ppu_ctrl_var
+    and #%01111111
+    ; fall through
+.endproc
+
+.proc toggle_nmi_common
+    sta se_ppu_ctrl_var
+    sta $2000
+    rts
+.endproc
+
+.export enable_nmi
+.proc enable_nmi
+    lda se_ppu_ctrl_var
+    ora #%10000000
+    bmi toggle_nmi_common
+.endproc
+
+
+;;
+;;  MMC3 BANKING FUNCTIONS
+;;  CODE IS FROM THE LLVM-MOS-SDK (modified, of course)
+;;
+.export set_prg_c000
+.proc set_prg_c000
+	sta __prg_c000
+	tax
+	lda #%00000110
+	ora __bank_select_hi
+	bne __set_reg_retry
+.endproc
+
+.export set_prg_a000
+.proc set_prg_a000
+	sta __prg_a000
+	tax
+	lda #%00000111
+	ora __bank_select_hi
+	;jmp __set_reg_retry    ;; SNIPERENGINE MODIFICATION:
+.endproc                    ;; why not just fall through here?
+
+.proc __set_reg_retry
+	dec __in_progress
+	sta $8000
+	stx $8001
+	bit __in_progress
+	bpl __set_reg_retry
+	lda #0
+	sta __in_progress
+	rts
+.endproc
+
+.export set_chr_bank
+.proc set_chr_bank
+	ora __bank_select_hi
+	sta $8000
+	stx $8001
+	lda #0
+	sta __in_progress
+	rts
+.endproc
+
+
+;;  
+;;  IDENTITY TABLE
+;;  CAN BE USED TO SPEED UP SOME CALCULATIONS.
+;;  STARTS AT $8100
+;;
+.align 256
+.export se_identity_table
+se_identity_table:
+    .byte $00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0a,$0b,$0c,$0d,$0e,$0f
+    .byte $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$1a,$1b,$1c,$1d,$1e,$1f
+    .byte $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$2a,$2b,$2c,$2d,$2e,$2f
+    .byte $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$3a,$3b,$3c,$3d,$3e,$3f
+    .byte $40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$4a,$4b,$4c,$4d,$4e,$4f
+    .byte $50,$51,$52,$53,$54,$55,$56,$57,$58,$59,$5a,$5b,$5c,$5d,$5e,$5f
+    .byte $60,$61,$62,$63,$64,$65,$66,$67,$68,$69,$6a,$6b,$6c,$6d,$6e,$6f
+    .byte $70,$71,$72,$73,$74,$75,$76,$77,$78,$79,$7a,$7b,$7c,$7d,$7e,$7f
+    .byte $80,$81,$82,$83,$84,$85,$86,$87,$88,$89,$8a,$8b,$8c,$8d,$8e,$8f
+    .byte $90,$91,$92,$93,$94,$95,$96,$97,$98,$99,$9a,$9b,$9c,$9d,$9e,$9f
+    .byte $a0,$a1,$a2,$a3,$a4,$a5,$a6,$a7,$a8,$a9,$aa,$ab,$ac,$ad,$ae,$af
+    .byte $b0,$b1,$b2,$b3,$b4,$b5,$b6,$b7,$b8,$b9,$ba,$bb,$bc,$bd,$be,$bf
+    .byte $c0,$c1,$c2,$c3,$c4,$c5,$c6,$c7,$c8,$c9,$ca,$cb,$cc,$cd,$ce,$cf
+    .byte $d0,$d1,$d2,$d3,$d4,$d5,$d6,$d7,$d8,$d9,$da,$db,$dc,$dd,$de,$df
+    .byte $e0,$e1,$e2,$e3,$e4,$e5,$e6,$e7,$e8,$e9,$ea,$eb,$ec,$ed,$ee,$ef
+    .byte $f0,$f1,$f2,$f3,$f4,$f5,$f6,$f7,$f8,$f9,$fa,$fb,$fc,$fd,$fe,$ff
+
+;;
+;;  SINE TABLE
+;;  STARTS AT $8200
+;;
+.export se_sine_table
+se_sine_table:
+    .byte $80,$83,$86,$89,$8c,$8f,$92,$95,$98,$9b,$9e,$a2,$a5,$a7,$aa,$ad
+    .byte $b0,$b3,$b6,$b9,$bc,$be,$c1,$c4,$c6,$c9,$cb,$ce,$d0,$d3,$d5,$d7
+    .byte $da,$dc,$de,$e0,$e2,$e4,$e6,$e8,$ea,$eb,$ed,$ee,$f0,$f1,$f3,$f4
+    .byte $f5,$f6,$f8,$f9,$fa,$fa,$fb,$fc,$fd,$fd,$fe,$fe,$fe,$ff,$ff,$ff
+    .byte $ff,$ff,$ff,$ff,$fe,$fe,$fe,$fd,$fd,$fc,$fb,$fa,$fa,$f9,$f8,$f6
+    .byte $f5,$f4,$f3,$f1,$f0,$ee,$ed,$eb,$ea,$e8,$e6,$e4,$e2,$e0,$de,$dc
+    .byte $da,$d7,$d5,$d3,$d0,$ce,$cb,$c9,$c6,$c4,$c1,$be,$bc,$b9,$b6,$b3
+    .byte $b0,$ad,$aa,$a7,$a5,$a2,$9e,$9b,$98,$95,$92,$8f,$8c,$89,$86,$83
+    .byte $80,$7c,$79,$76,$73,$70,$6d,$6a,$67,$64,$61,$5d,$5a,$58,$55,$52
+    .byte $4f,$4c,$49,$46,$43,$41,$3e,$3b,$39,$36,$34,$31,$2f,$2c,$2a,$28
+    .byte $25,$23,$21,$1f,$1d,$1b,$19,$17,$15,$14,$12,$11,$0f,$0e,$0c,$0b
+    .byte $0a,$09,$07,$06,$05,$05,$04,$03,$02,$02,$01,$01,$01,$00,$00,$00
+    .byte $00,$00,$00,$00,$01,$01,$01,$02,$02,$03,$04,$05,$05,$06,$07,$09
+    .byte $0a,$0b,$0c,$0e,$0f,$11,$12,$14,$15,$17,$19,$1b,$1d,$1f,$21,$23
+    .byte $25,$28,$2a,$2c,$2f,$31,$34,$36,$39,$3b,$3e,$41,$43,$46,$49,$4c
+    .byte $4f,$52,$55,$58,$5a,$5d,$61,$64,$67,$6a,$6d,$70,$73,$76,$79,$7c
+;;  
+;;  PALETTE BRIGHTNESS TABLE
+;;  STARTS AT $8300
+;;
+se_palette_brightness_table:
+    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;0
+    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;1
+    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;2
+    .byte $0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f,$0f ;3
+    
+    .byte $00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0a,$0b,$0c,$0d,$0e,$0f ;4
+
+    .byte $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$1a,$1b,$1c,$1d,$1e,$00 ;5
+
+    .byte $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$2a,$2b,$2c,$2d,$2e,$10 ;6
+
+    .byte $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$3a,$3b,$3c,$3d,$3f,$20 ;7
+
+    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30 ;8
+    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
+    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
+    .byte $30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30,$30
+
+
+
+.export nofunction
+nofunction = se_identity_table+$60
 
 ;;
 ;;  OAM DMA SHENANIGANS
@@ -314,7 +447,7 @@ MouseBoundsMax:
     ;".if 0" // TODO support SNES extra buttons 
     ;    "STY joypad1+1" // get put get
     ;    "NOP"                // put get
-    ;"1:"
+    ; "1:"
     ;    "LDA CONTROLLER_PORT \n" // put get* put GET *848  // Starts: 751, [879]
     ;    "AND #$03 \n"           // put get
     ;    "CMP #$01 \n"           // put get
@@ -446,95 +579,7 @@ MouseBoundsMax:
     rts
 .endproc
 
-; THE SOUND ENGINE!
-;.include "famistudio_ca65.s"
 
-.export disable_nmi
-.proc disable_nmi
-    lda se_ppu_ctrl_var
-    and #%01111111
-    ; fall through
-.endproc
-
-.proc toggle_nmi_common
-    sta se_ppu_ctrl_var
-    sta $2000
-    rts
-.endproc
-
-.export enable_nmi
-.proc enable_nmi
-    lda se_ppu_ctrl_var
-    ora #%10000000
-    bmi toggle_nmi_common
-.endproc
-
-
-;;
-;;  MMC3 BANKING FUNCTIONS
-;;  CODE IS FROM THE LLVM-MOS-SDK (modified, of course)
-;;
-.export set_prg_c000
-.proc set_prg_c000
-	sta __prg_c000
-	tax
-	lda #%00000110
-	ora __bank_select_hi
-	bne __set_reg_retry
-.endproc
-
-.export set_prg_a000
-.proc set_prg_a000
-	sta __prg_a000
-	tax
-	lda #%00000111
-	ora __bank_select_hi
-	;jmp __set_reg_retry    ;; SNIPERENGINE MODIFICATION:
-.endproc                    ;; why not just fall through here?
-
-.proc __set_reg_retry
-	dec __in_progress
-	sta $8000
-	stx $8001
-	bit __in_progress
-	bpl __set_reg_retry
-	lda #0
-	sta __in_progress
-	rts
-.endproc
-
-;.export banked_call_a000
-;.proc banked_call_a000
-;    .import __call_indir
-;	tay
-;	lda __prg_a000
-;	pha
-;	tya
-;	jsr set_prg_a000
-;	lda __rc2
-;	sta __rc18
-;	lda __rc3
-;	sta __rc19
-;	jsr __call_indir
-;	pla
-;	jmp set_prg_a000
-;	;rts
-;.endproc
-
-.export set_chr_bank
-.proc set_chr_bank
-	ora __bank_select_hi
-	sta $8000
-	stx $8001
-	lda #0
-	sta __in_progress
-	rts
-.endproc
-
-;.proc set_chr_bank_retry
-;	ora __bank_select_hi
-;	jmp __set_reg_retry
-;.endproc
 
 .export jsrfar
 .proc jsrfar
@@ -1140,8 +1185,8 @@ donut_stream_ptr = $02
         bne @wait
     rts
 .endproc
-;   enable/disable rendering
 
+;   enable/disable rendering
 .export se_turn_off_rendering
 .proc se_turn_off_rendering
     lda se_ppu_mask_var
@@ -1219,7 +1264,7 @@ donut_stream_ptr = $02
     adc     #0
     stx     se_palette_pointer_bg+0
     sta     se_palette_pointer_bg+1
-    jmp __inc_palette_update ; bra
+    jmp     __inc_palette_update ; bra
 .endproc
 
 .export se_set_palette_brightness_sprites
@@ -2209,74 +2254,4 @@ irq_exit_no_preserve_x:
     rti
 
 
-
-;;
-;; API, USEFUL FOR ROM HACKING
-;; STARTS AT $8000
-;;
-.align 16
-;; init
-jmp se_init
-
-;; nmi
-jmp disable_nmi
-jmp enable_nmi
-
-;; mmc3 functions
-jmp set_prg_a000
-jmp set_prg_c000
-;jmp banked_call_a000
-jmp set_chr_bank
-jmp jsrfar
-
-;; vram functions
-;.align 8
-jmp se_vram_unrle
-jmp se_vram_donut_decompress
-
-;; ppu functions
-;.align 8
-jmp se_wait_vsync
-jmp se_wait_frames
-jmp se_turn_off_rendering
-jmp se_turn_on_rendering
-
-jmp se_set_palette_background
-jmp se_set_palette_sprites
-jmp se_set_palette_all
-jmp se_set_palette_color
-
-jmp se_set_palette_brightness_background
-jmp se_set_palette_brightness_sprites
-jmp se_set_palette_brightness_all
-
-jmp se_fade_palette_to
-jmp se_clear_palette
-
-;; oam stuff
-jmp se_clear_sprites
-jmp se_draw_sprite
-jmp se_draw_metasprite
-
-;; vram buffer
-;.align 8
-;jmp se_set_vram_update  ; not needed
-jmp se_set_vram_buffer
-
-jmp se_one_vram_buffer
-jmp se_string_vram_buffer
-
-;; memory stuff
-;.align 8
-jmp se_memory_fill
-jmp se_memory_copy
-
-;; music stuff
-;.align 8
-.import se_music_play,se_sfx_play,se_music_update
-jmp se_music_play   
-jmp se_sfx_play 
-jmp se_music_update 
-jmp famistudio_music_stop
-jmp famistudio_music_pause
 

@@ -1,5 +1,5 @@
 banked(startup_bank.data) const u8 pal_startup[] = {
-    0x20, 0x10, 0x00, 0x0f,
+    0x0f, 0x00, 0x10, 0x20,
     0x0f, 0x01, 0x11, 0x21,
     0x0f, 0x02, 0x12, 0x22,
     0x0f, 0x03, 0x13, 0x23,
@@ -58,11 +58,11 @@ banked(startup_bank.func) void state_startup(){
         se_wait_vsync();
 
         se_set_palette_brightness_all(4);
-        if((stall >= 85)) se_set_palette_brightness_all(5);
+        if((stall >= 85)) se_set_palette_brightness_all(3);
     }
 
 
-    se_fade_palette_to(4,8);
+    se_fade_palette_to(4,0);
     se_turn_off_rendering();
 
     gamestate = 0xff;
@@ -168,14 +168,3 @@ banked(startup_bank.func) void thegreet_message(){
         se_gray_line();
     }
 }
-
-
-file(samples_0, 1) = {
-    #embed "./samples/gofuckyourself0.pcm"
-};
-file(samples_1, 2) = {
-    #embed "./samples/gofuckyourself1.pcm"
-};
-file(samples_2, 3) = {
-    #embed "./samples/geometryDash2.pcm"
-};

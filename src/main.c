@@ -19,14 +19,12 @@ banked(fixed.main) int main(void) {
     PPU.control = se_ppu_ctrl_var = 0b10100000;
     PPU.mask = se_ppu_mask_var = 0b00000110;
     PPU.status;
-    se_init(0x80);
+    se_init();
 
     se_set_first_music_bank(music_bank_0);
     se_set_first_dpcm_bank(dpcm_bank_0);
     se_set_sfx_bank(0);
     famistudio_init(1,0xa000);
-
-    se_sfx_play(0,0);
 
     se_post_nmi_ptr = se_music_update;
 
@@ -46,6 +44,6 @@ banked(fixed.main) int main(void) {
                 jsrfar_noargs(60,thegreet_message);
                 break;
         }
-        se_post_nmi_ptr = nofunction;
+        //se_post_nmi_ptr = nofunction;
     }
 }

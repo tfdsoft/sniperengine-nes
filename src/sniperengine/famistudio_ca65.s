@@ -7581,3 +7581,9 @@ famistudio_rhythm_lut:
 
 
 
+;; SNIPERENGINE DPCM CALLBACK
+.import set_prg_8000 ; actually c000
+famistudio_dpcm_bank_callback:
+    clc
+    adc se_first_dpcm_bank
+    jmp set_prg_8000
