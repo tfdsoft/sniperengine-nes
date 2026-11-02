@@ -1772,7 +1772,7 @@ __exit_vram_buffer_noupdate:
         ldx #>pla_sta_2007_table_end ; high byte
         sec
         sbc se_identity_table,y
-        bcs:+   ;; TODO: align to a page boundary
+        bcs :+   ;; TODO: align to a page boundary
         dex     ;; so i don't have to decrement x
         :
         sta __rc18
